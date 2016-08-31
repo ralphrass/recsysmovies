@@ -39,12 +39,12 @@ def main():
     #print "MIN", MIN, "MAX", MAX
     predictions = []
 
-    query_all_movies = "SELECT "+SEPARATOR.join(appendColumns(COLUMNS))+", mm.movielensId, m.title FROM "+MOVIE_TABLE_NAME+" m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid LIMIT 20"
-    query = "SELECT userid FROM movielens_user LIMIT 1"
+    query_all_movies = "SELECT "+SEPARATOR.join(appendColumns(COLUMNS))+", mm.movielensId, m.title FROM "+MOVIE_TABLE_NAME+" m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid LIMIT 200"
+    query = "SELECT userid FROM movielens_user WHERE userId = 26582" #138414 (202 avaliacoes)
 
     for user in CURSOR_USERS.execute(query):
         print "Computing for User ", user[0], "..."
-        query_movie = "SELECT "+SEPARATOR.join(appendColumns(COLUMNS))+", r.rating, mm.movielensId, m.title FROM "+MOVIE_TABLE_NAME+" m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN movielens_rating r ON r.movielensid = mm.movielensid WHERE r.userid = ? AND r.movielensId != ? LIMIT 20"
+        query_movie = "SELECT "+SEPARATOR.join(appendColumns(COLUMNS))+", r.rating, mm.movielensId, m.title FROM "+MOVIE_TABLE_NAME+" m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN movielens_rating r ON r.movielensid = mm.movielensid WHERE r.userid = ? AND r.movielensId != ?"
         #print query_all_movies, query_movie
         for movieI in CURSOR_MOVIES.execute(query_all_movies): #will predict rating to all movies
 
@@ -62,8 +62,8 @@ def predictUserRating(query_movie, user, movieI):
 
     #get all rated movies by current user (except the current movieI)
     for movieJ in CURSOR_USERMOVIES.execute(query_movie, (user[0], movieI[len(COLUMNS)])):
-        #sim = computeGowerSimilarity(movieI, movieJ)
-        sim = computeCosineSimilarity(movieI, movieJ)
+        sim = computeGowerSimilarity(movieI, movieJ)
+        #sim = computeCosineSimilarity(movieI, movieJ)
         #print movieJ[len(COLUMNS)+2], sim, movieJ[len(COLUMNS)]
 
         SumSimilarityTimesRating += (sim * movieJ[len(COLUMNS)])
@@ -84,10 +84,6 @@ def computeCosineSimilarity(i, j):
     b = scipy.array(CURSOR_MOVIEJ.fetchall())
 
     return cosine(a, b)
-
-    #return 0
-    #return cosine_similarity(ratingsI, ratingsJ)
-    #return cosine(ratingsI, ratingsJ)
 
 #TODO categorical / nominal attributes
 #TODO apply weights
