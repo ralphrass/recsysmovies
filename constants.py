@@ -12,6 +12,8 @@ CURSOR_MOVIEJ = conn.cursor()
 SEPARATOR = ","
 
 PREDICTION_LIST_SIZE = 20
+LIMIT_ITEMS_TO_PREDICT = 4000
+LIMIT_ITEMS_TO_COMPARE = 25
 NUM_USERS = 1
 
 COLUMNS = [
@@ -43,11 +45,11 @@ INDEX_COLUMN_TITLE = len(COLUMNS)+1
 INDEX_COLUMN_RATING = len(COLUMNS)
 
 def appendQueryAllMovies():
-    QUERY_ALL_MOVIES = ", mm.movielensId, m.title FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid LIMIT 1000"
+    QUERY_ALL_MOVIES = ", mm.movielensId, m.title FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid LIMIT ?"
     return QUERY_ALL_MOVIES
 
 def appendQueryMovie():
-    QUERY_MOVIE = ", r.rating, mm.movielensId, m.title FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN movielens_rating r ON r.movielensid = mm.movielensid WHERE r.userid = ? AND r.movielensId != ?"
+    QUERY_MOVIE = ", r.rating, mm.movielensId, m.title FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN movielens_rating r ON r.movielensid = mm.movielensid WHERE r.userid = ? AND r.movielensId != ? LIMIT ?"
     return QUERY_MOVIE
 
 def recommendQuantitative():

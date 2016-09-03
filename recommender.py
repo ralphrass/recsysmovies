@@ -47,7 +47,7 @@ def main():
         predictions = []
         CountUsers += 1
 
-        for movieI in constants.CURSOR_MOVIES.execute(QUERY_ALL_MOVIES): #will predict rating to specified movies
+        for movieI in constants.CURSOR_MOVIES.execute(QUERY_ALL_MOVIES, (constants.LIMIT_ITEMS_TO_PREDICT,)): #will predict rating to specified movies
             prediction = predictUserRating(QUERY_MOVIE, user, movieI, UserAverageRating)
             predictions.append((movieI[constants.INDEX_COLUMN_ID], movieI[constants.INDEX_COLUMN_TITLE], prediction))
 
@@ -71,7 +71,7 @@ def predictUserRating(QUERY_MOVIE, user, movieI, UserAverageRating):
     prediction = 0
 
     #get all rated movies by current user (except the current movieI)
-    for movieJ in constants.CURSOR_USERMOVIES.execute(QUERY_MOVIE, (user[0], movieI[constants.INDEX_COLUMN_ID])):
+    for movieJ in constants.CURSOR_USERMOVIES.execute(QUERY_MOVIE, (user[0], movieI[constants.INDEX_COLUMN_ID], constants.LIMIT_ITEMS_TO_COMPARE)):
 
         sim = computeSimilarity(SIMILARITY_MEASURE, movieI, movieJ, RECOMMENDATION_STRATEGY, MIN, MAX, UserAverageRating)
 
