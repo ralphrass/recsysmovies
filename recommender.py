@@ -16,13 +16,19 @@ from similarity import computeSimilarity, computeCosineSimilarityCollaborative, 
 RECOMMENDATION_STRATEGY, SIMILARITY_MEASURE = "", ""
 MIN, MAX = [], []
 REAL_RATINGS, PREDICTED_RATINGS = [], []
+AVERAGE_RANDOM_MAE = 0 #Control to execute only once
 
 def loadMinMaxValues():
-    for c in constants.COLUMNS:
-        MIN.append(float(getValue('MIN', c, constants.conn)))
-        MAX.append(float(getValue('MAX', c, constants.conn)))
+    if (not MIN) and (not MAX):
+        for c in constants.COLUMNS:
+            MIN.append(float(getValue('MIN', c, constants.conn)))
+            MAX.append(float(getValue('MAX', c, constants.conn)))
 
 def main():
+
+    global REAL_RATINGS, PREDICTED_RATINGS, AVERAGE_RANDOM_MAE
+
+    REAL_RATINGS, PREDICTED_RATINGS = [], []
 
     loadMinMaxValues()
 
@@ -33,13 +39,15 @@ def main():
     AllMovies = constants.CURSOR_MOVIES.fetchall()
 
     queryUserAverage = "SELECT SUM(rating)/COUNT(*) FROM movielens_rating WHERE userId = ?"
-    query = "SELECT userid FROM movielens_user ORDER BY userid LIMIT ?" #WHERE userId = 26582" #138414 (202 avaliacoes)
+    # query = "SELECT userid FROM movielens_user ORDER BY userid LIMIT ?" #WHERE userId = 26582" #138414 (202 avaliacoes)
+    # User rated at least 50 movies
+    query = "SELECT u.userid FROM movielens_user u JOIN movielens_rating r ON r.userId = u.userId GROUP BY r.userId HAVING COUNT(r.movielensId) > 50 LIMIT ?"
 
     QUERY_ALL_MOVIES, QUERY_MOVIE = constants.setQueries(RECOMMENDATION_STRATEGY)
 
     for user in constants.CURSOR_USERS.execute(query, (constants.NUM_USERS,)):
 
-        print "Computing for User ", user[0], "..."
+        # print "Computing for User ", user[0], "..."
 
         constants.CURSOR_USERMOVIES.execute(queryUserAverage, (user[0],))
         UserAverageRating = constants.CURSOR_USERMOVIES.fetchone()
@@ -51,7 +59,9 @@ def main():
             prediction = predictUserRating(QUERY_MOVIE, user, movieI, UserAverageRating)
             predictions.append((movieI[constants.INDEX_COLUMN_ID], movieI[constants.INDEX_COLUMN_TITLE], prediction))
 
-        SumRandomMAE += evaluateRandomMAE(REAL_RATINGS, UserAverageRating)
+        if AVERAGE_RANDOM_MAE == 0:
+            SumRandomMAE += evaluateRandomMAE(REAL_RATINGS, UserAverageRating)
+
         SumMAE += evaluateMAE(REAL_RATINGS, PREDICTED_RATINGS)
         topPredictions = sorted(predictions, key=lambda tup: tup[2], reverse=True)[:constants.PREDICTION_LIST_SIZE] # 2 is the index of the rating
         #print topPredictions
@@ -73,9 +83,9 @@ def predictUserRating(QUERY_MOVIE, user, movieI, UserAverageRating):
     #get all rated movies by current user (except the current movieI)
     for movieJ in constants.CURSOR_USERMOVIES.execute(QUERY_MOVIE, (user[0], movieI[constants.INDEX_COLUMN_ID], constants.LIMIT_ITEMS_TO_COMPARE)):
 
-        sim = computeSimilarity(SIMILARITY_MEASURE, movieI, movieJ, RECOMMENDATION_STRATEGY, MIN, MAX, UserAverageRating)
+        sim = computeSimilarity(SIMILARITY_MEASURE, movieI, movieJ, RECOMMENDATION_STRATEGY, MIN, MAX)
 
-        SumSimilarityTimesRating += (sim * movieJ[constants.INDEX_COLUMN_RATING])
+        SumSimilarityTimesRating += (sim * float(movieJ[constants.INDEX_COLUMN_RATING]))
         SumSimilarity += abs(sim)
 
     if (SumSimilarityTimesRating > 0 and SumSimilarity > 0):

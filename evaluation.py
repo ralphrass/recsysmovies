@@ -4,8 +4,13 @@ import constants
 RATING_THRESHOLD = 3
 
 def evaluateAverageMAE(SumMAE, CountUsers, SumRandomMAE):
+
     MAE = (SumMAE / CountUsers)
-    RandomMAE = (SumRandomMAE / CountUsers)
+
+    if SumRandomMAE > 0:
+        RandomMAE = (SumRandomMAE / CountUsers)
+    else:
+        RandomMAE = 0
 
     return MAE, RandomMAE
 
@@ -23,12 +28,21 @@ def evaluate(SumMAE, CountUsers, SumRandomMAE, UsersPredictions, UsersRandomPred
     return MAE, RandomMAE, Precision, Recall, F1, RandomPrecision, RandomRecall, RandomF1
 
 def evaluateMAE(REAL_RATINGS, PREDICTED_RATINGS):
-    #global REAL_RATINGS, PREDICTED_RATINGS
-    mae = mean_absolute_error(REAL_RATINGS, PREDICTED_RATINGS)
+
+    if len(PREDICTED_RATINGS) != 0:
+        mae = mean_absolute_error(REAL_RATINGS, PREDICTED_RATINGS)
+    else:
+        mae = 0
+
     return mae
 
 def evaluateRandomMAE(REAL_RATINGS, UserAverageRating):
-    randomMae = mean_absolute_error(REAL_RATINGS, [UserAverageRating]*len(REAL_RATINGS))
+
+    if len(REAL_RATINGS) != 0:
+        randomMae = mean_absolute_error(REAL_RATINGS, [UserAverageRating]*len(REAL_RATINGS))
+    else:
+        randomMae = 0
+        
     return randomMae
 
 def evaluatePrecisionRecallF1(UsersPredictions, CountUsers):
