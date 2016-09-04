@@ -15,19 +15,19 @@ MEASURES = [
 STRATEGIES = [
     "quanti", #quantitative features (Year, MovieLens Rating, IMDB Rating, Tomato Rating)
     "quali", #Actors, Director, Writer
-    "both", #quanti + quali
+    #"both", #quanti + quali
     "triple" #both + features from trailers
 ]
 
 def main():
 
-    constants.NUM_USERS = 100 # constants.MAX_NUM_USERS
+    constants.NUM_USERS = 10 # constants.MAX_NUM_USERS
     constants.PREDICTION_LIST_SIZE = 10 #increase at each iteration
-    constants.LIMIT_ITEMS_TO_PREDICT = 50 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
-    constants.LIMIT_ITEMS_TO_COMPARE = 50 # constants.MAX_ITEMS_TO_COMPARE #movies rated by each user
+    constants.LIMIT_ITEMS_TO_PREDICT = 20 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
+    constants.LIMIT_ITEMS_TO_COMPARE = 20 # constants.MAX_ITEMS_TO_COMPARE #movies rated by each user
     recommender.RECOMMENDATION_STRATEGY = 'triple' #quanti, quali, both, triple(quanti, quali and features)
 
-    print "Starting Experiment... ", constants.NUM_USERS, "users.", "list size equal to", constants.PREDICTION_LIST_SIZE, "." , constants.LIMIT_ITEMS_TO_PREDICT, "items to predict.", constants.LIMIT_ITEMS_TO_COMPARE, "items to compare."
+    print "Starting Experiment... ", constants.NUM_USERS, "users.", "recommender list size equal to", constants.PREDICTION_LIST_SIZE, "." , constants.LIMIT_ITEMS_TO_PREDICT, "items to predict for.", constants.LIMIT_ITEMS_TO_COMPARE, "items of each user to compare with."
 
     #TODO Ensure that gower-features and cos-features is computed once for each strategy (except triple)
     #TODO matplotlib
@@ -40,6 +40,10 @@ def main():
         # Vary the number of items used for similarity computation to measure MAE from 25 to 500 (+25 at each iteration)
 
         for m in MEASURES:
+
+            if (strategy == 'quali') and (m != 'gower'):
+                continue
+
             print "Computing measure", m
             recommender.SIMILARITY_MEASURE = m
             SumMAE, CountUsers, SumRandomMAE, UsersPredictions, UsersRandomPredictions = recommender.main()

@@ -41,7 +41,7 @@ def main():
     queryUserAverage = "SELECT SUM(rating)/COUNT(*) FROM movielens_rating WHERE userId = ?"
     # query = "SELECT userid FROM movielens_user ORDER BY userid LIMIT ?" #WHERE userId = 26582" #138414 (202 avaliacoes)
     # User rated at least 50 movies
-    query = "SELECT u.userid FROM movielens_user u JOIN movielens_rating r ON r.userId = u.userId GROUP BY r.userId HAVING COUNT(r.movielensId) > 50 LIMIT ?"
+    query = "SELECT u.userid FROM movielens_user u JOIN movielens_rating r ON r.userId = u.userId GROUP BY r.userId HAVING COUNT(r.movielensId) > 100 LIMIT ?"
 
     QUERY_ALL_MOVIES, QUERY_MOVIE = constants.setQueries(RECOMMENDATION_STRATEGY)
 
@@ -61,12 +61,13 @@ def main():
 
         if AVERAGE_RANDOM_MAE == 0:
             SumRandomMAE += evaluateRandomMAE(REAL_RATINGS, UserAverageRating)
+            UsersRandomPredictions.append((user[0], random.sample(AllMovies, constants.PREDICTION_LIST_SIZE)))
 
         SumMAE += evaluateMAE(REAL_RATINGS, PREDICTED_RATINGS)
         topPredictions = sorted(predictions, key=lambda tup: tup[2], reverse=True)[:constants.PREDICTION_LIST_SIZE] # 2 is the index of the rating
         #print topPredictions
         UsersPredictions.append((user[0],[a[0] for a in topPredictions])) #keep top predictions for each user (item id)
-        UsersRandomPredictions.append((user[0], random.sample(AllMovies, constants.PREDICTION_LIST_SIZE)))
+
 
     return SumMAE, CountUsers, SumRandomMAE, UsersPredictions, UsersRandomPredictions
     # evaluate(SumMAE, CountUsers, SumRandomMAE, UsersPredictions, UsersRandomPredictions)

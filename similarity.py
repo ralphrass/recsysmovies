@@ -174,16 +174,18 @@ def computeAdjustedCosine(i, j):
 def computeSimilarity(SIMILARITY_MEASURE, movieI, movieJ, RECOMMENDATION_STRATEGY, MIN, MAX):
     if (SIMILARITY_MEASURE == 'gower'):
         sim = computeGowerSimilarity(movieI, movieJ, RECOMMENDATION_STRATEGY, MIN, MAX)
-    elif (SIMILARITY_MEASURE == 'cos-content'):
+    elif (SIMILARITY_MEASURE == 'cos-content' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
         sim = computeCosineSimilarityContent(movieI, movieJ, RECOMMENDATION_STRATEGY)
     elif (SIMILARITY_MEASURE == 'cos-collaborative'):
         sim = computeCosineSimilarityCollaborative(movieI, movieJ)
     elif (SIMILARITY_MEASURE == 'adjusted-cosine'):
         sim = computeAdjustedCosine(movieI, movieJ)
-    elif (SIMILARITY_MEASURE == 'gower-features'):
+    elif (SIMILARITY_MEASURE == 'gower-features' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
         SumSijk, SumDeltaijk = computeGowerFeatures(movieI, movieJ)
         sim = SumSijk / SumDeltaijk
-    elif (SIMILARITY_MEASURE == 'cos-features'):
+    elif (SIMILARITY_MEASURE == 'cos-features' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
         sim = computeCosineSimilarityFeatures(movieI, movieJ)
+    else:
+        sim = 0
 
     return sim
