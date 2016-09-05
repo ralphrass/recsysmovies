@@ -124,9 +124,13 @@ def computeGowerSimilarity(i, j, RECOMMENDATION_STRATEGY, MIN, MAX):
         SumSijk, SumDeltaijk = computeGowerQualitative(i, j, RECOMMENDATION_STRATEGY)
     elif (RECOMMENDATION_STRATEGY == 'triple'):
         a1,b1 = computeGowerQuantitative(i, j, MIN, MAX)
-        a2,b2 = computeGowerQualitative(i, j, RECOMMENDATION_STRATEGY)
-        a3,b3 = computeGowerFeatures(i, j)
-        SumSijk, SumDeltaijk = (a1+a2+a3), (b1+b2+b3)
+        a2,b2 = computeGowerFeatures(i, j)
+        SumSijk, SumDeltaijk = (a1+a2), (b1+b2)
+    # elif (RECOMMENDATION_STRATEGY == 'triple'):
+    #     a1,b1 = computeGowerQuantitative(i, j, MIN, MAX)
+    #     a2,b2 = computeGowerQualitative(i, j, RECOMMENDATION_STRATEGY)
+    #     a3,b3 = computeGowerFeatures(i, j)
+    #     SumSijk, SumDeltaijk = (a1+a2+a3), (b1+b2+b3)
     else: #both
         a1,b1 = computeGowerQuantitative(i, j, MIN, MAX)
         a2,b2 = computeGowerQualitative(i, j, RECOMMENDATION_STRATEGY)
@@ -180,10 +184,12 @@ def computeSimilarity(SIMILARITY_MEASURE, movieI, movieJ, RECOMMENDATION_STRATEG
         sim = computeCosineSimilarityCollaborative(movieI, movieJ)
     elif (SIMILARITY_MEASURE == 'adjusted-cosine'):
         sim = computeAdjustedCosine(movieI, movieJ)
-    elif (SIMILARITY_MEASURE == 'gower-features' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
+    # elif (SIMILARITY_MEASURE == 'gower-features' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
+    elif (SIMILARITY_MEASURE == 'gower-features' and (RECOMMENDATION_STRATEGY == 'quanti')):
         SumSijk, SumDeltaijk = computeGowerFeatures(movieI, movieJ)
         sim = SumSijk / SumDeltaijk
-    elif (SIMILARITY_MEASURE == 'cos-features' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
+    # elif (SIMILARITY_MEASURE == 'cos-features' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
+    elif (SIMILARITY_MEASURE == 'cos-features' and (RECOMMENDATION_STRATEGY == 'quanti')):
         sim = computeCosineSimilarityFeatures(movieI, movieJ)
     else:
         sim = 0

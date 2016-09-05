@@ -13,8 +13,8 @@ CURSOR_MOVIEJ = conn.cursor()
 SEPARATOR = ","
 
 PREDICTION_LIST_SIZE = 20
-LIMIT_ITEMS_TO_PREDICT = 4000
-LIMIT_ITEMS_TO_COMPARE = 25
+LIMIT_ITEMS_TO_PREDICT = 10
+LIMIT_ITEMS_TO_COMPARE = 10
 NUM_USERS = 1
 
 MAX_NUM_USERS = 19042
@@ -57,16 +57,26 @@ INDEX_COLUMN_TRAILER_ID_ALL_MOVIES = len(COLUMNS)+2
 INDEX_COLUMN_TRAILER_ID_USER_MOVIE = len(COLUMNS)+3
 
 def appendQueryAllMovies():
-    QUERY_ALL_MOVIES = ", mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 LIMIT ?"
+    # QUERY_ALL_MOVIES = ", mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 LIMIT ?"
+    QUERY_ALL_MOVIES = ", mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1"
     return QUERY_ALL_MOVIES
 
 def appendQueryMovie():
-    QUERY_MOVIE = ", r.rating, mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN movielens_rating r ON r.movielensid = mm.movielensid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 WHERE r.userid = ? AND r.movielensId != ? LIMIT ?"
+    # QUERY_MOVIE = ", r.rating, mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN movielens_rating r ON r.movielensid = mm.movielensid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 WHERE r.userid = ? AND r.movielensId != ? LIMIT ?"
+    QUERY_MOVIE = ", r.rating, mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN movielens_rating r ON r.movielensid = mm.movielensid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 WHERE r.userid = ? AND r.movielensId != ?"
     return QUERY_MOVIE
 
 def recommendQuantitative():
+    global INDEX_COLUMN_ID, INDEX_COLUMN_TITLE, INDEX_COLUMN_RATING, INDEX_COLUMN_TRAILER_ID_ALL_MOVIES, INDEX_COLUMN_TRAILER_ID_USER_MOVIE
+
     QUERY_ALL_MOVIES = "SELECT "+SEPARATOR.join(appendColumns(COLUMNS))+appendQueryAllMovies()
     QUERY_MOVIE = "SELECT "+SEPARATOR.join(appendColumns(COLUMNS))+appendQueryMovie()
+
+    INDEX_COLUMN_ID = len(COLUMNS)
+    INDEX_COLUMN_TITLE = len(COLUMNS)+1
+    INDEX_COLUMN_RATING = len(COLUMNS)
+    INDEX_COLUMN_TRAILER_ID_ALL_MOVIES = len(COLUMNS)+2
+    INDEX_COLUMN_TRAILER_ID_USER_MOVIE = len(COLUMNS)+3
 
     return QUERY_ALL_MOVIES, QUERY_MOVIE
 
