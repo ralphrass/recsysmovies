@@ -89,7 +89,7 @@ def main():
 
         print "Random MAE ", (AVG_RANDOM_MAE / iterations)
 
-        constants.conn.close()
+    constants.conn.close()
 
 if __name__ == '__main__':
     main()
