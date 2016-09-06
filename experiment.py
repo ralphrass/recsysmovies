@@ -22,13 +22,13 @@ STRATEGIES = [
 def main():
 
     constants.NUM_USERS = 100 # constants.MAX_NUM_USERS
-    constants.PREDICTION_LIST_SIZE = 10 #increase at each iteration
-    constants.LIMIT_ITEMS_TO_PREDICT = 10 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
-    constants.LIMIT_ITEMS_TO_COMPARE = 10 # constants.MAX_ITEMS_TO_COMPARE #movies rated by each user
+    constants.PREDICTION_LIST_SIZE = 100 #increase at each iteration
+    constants.LIMIT_ITEMS_TO_PREDICT = 100 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
+    constants.LIMIT_ITEMS_TO_COMPARE = 100 # constants.MAX_ITEMS_TO_COMPARE #movies rated by each user
     recommender.RECOMMENDATION_STRATEGY = 'triple' #quanti, quali, both, triple(quanti, quali and features)
-    iterations = 1
+    iterations = 100
 
-    print "Starting Experiment... ", constants.NUM_USERS, "users.", "recommender list size equal to", constants.PREDICTION_LIST_SIZE, "." , constants.LIMIT_ITEMS_TO_PREDICT, "items to predict for.", constants.LIMIT_ITEMS_TO_COMPARE, "items of each user to compare with."
+    print "Starting Experiment... ", iterations, "iterations.", constants.NUM_USERS, "users.", "recommender list size equal to", constants.PREDICTION_LIST_SIZE, "." , constants.LIMIT_ITEMS_TO_PREDICT, "items to predict for.", constants.LIMIT_ITEMS_TO_COMPARE, "items of each user to compare with."
 
     #TODO Randomize each user, items to recommend and items to compare with. Run for 'n' iterations and collect average MAE
     #TODO matplotlib
@@ -41,8 +41,8 @@ def main():
     AVG_MAE["quanti"]["cos-features"] = 0
     AVG_MAE["triple"]["gower"] = 0
     AVG_MAE["triple"]["cos-content"] = 0
-    # AVG_MAE["triple"]["gower-features"] = 0
-    # AVG_MAE["triple"]["cos-features"] = 0
+    AVG_MAE["triple"]["gower-features"] = 0
+    AVG_MAE["triple"]["cos-features"] = 0
     AVG_RANDOM_MAE = 0
 
     for i in range(iterations):
@@ -59,13 +59,7 @@ def main():
 
             for m in MEASURES:
 
-                if (strategy == 'quali') and (m != 'gower'):
-                    continue
-
-                if (strategy == 'triple') and (m != 'gower' or m != 'cos-content'):
-                    continue
-
-                print "Computing measure", m
+                #print "Computing measure", m
                 recommender.SIMILARITY_MEASURE = m
                 SumMAE, CountUsers, SumRandomMAE, UsersPredictions, UsersRandomPredictions = recommender.main()
                 MAE, RandomMAE = evaluation.evaluateAverageMAE(SumMAE, CountUsers, SumRandomMAE)
