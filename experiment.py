@@ -21,12 +21,13 @@ STRATEGIES = [
 
 def main():
 
-    constants.NUM_USERS = 100 # constants.MAX_NUM_USERS
-    constants.PREDICTION_LIST_SIZE = 100 #increase at each iteration
-    constants.LIMIT_ITEMS_TO_PREDICT = 100 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
-    constants.LIMIT_ITEMS_TO_COMPARE = 100 # constants.MAX_ITEMS_TO_COMPARE #movies rated by each user
+    constants.NUM_USERS = 10 # constants.MAX_NUM_USERS
+    constants.PREDICTION_LIST_SIZE = 30 #increase at each iteration
+    constants.LIMIT_ITEMS_TO_PREDICT = 30 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
+    constants.LIMIT_ITEMS_TO_COMPARE = 30 # constants.MAX_ITEMS_TO_COMPARE #movies rated by each user
     recommender.RECOMMENDATION_STRATEGY = 'triple' #quanti, quali, both, triple(quanti, quali and features)
-    iterations = 100
+    iterations = 10
+    outsideiterations = 10
 
     print "Starting Experiment... ", iterations, "iterations.", constants.NUM_USERS, "users.", "recommender list size equal to", constants.PREDICTION_LIST_SIZE, "." , constants.LIMIT_ITEMS_TO_PREDICT, "items to predict for.", constants.LIMIT_ITEMS_TO_COMPARE, "items of each user to compare with."
 
@@ -45,36 +46,39 @@ def main():
     AVG_MAE["triple"]["cos-features"] = 0
     AVG_RANDOM_MAE = 0
 
-    for i in range(iterations):
+    for k in range(outsideiterations):
 
-        print "\n",i, "iteration."
-        recommender.AVERAGE_RANDOM_MAE = 0 #need to compute for every iteration
+        print "Outside iteration", k
 
-        for strategy in STRATEGIES:
+        for i in range(iterations):
 
-            recommender.RECOMMENDATION_STRATEGY = strategy
-            print "\nStrategy", recommender.RECOMMENDATION_STRATEGY
+            print i, "iteration."
+            recommender.AVERAGE_RANDOM_MAE = 0 #need to compute for every iteration
 
-            # Vary the number of items used for similarity computation to measure MAE from 25 to 500 (+25 at each iteration)
+            for strategy in STRATEGIES:
 
-            for m in MEASURES:
+                recommender.RECOMMENDATION_STRATEGY = strategy
+                # print "\nStrategy", recommender.RECOMMENDATION_STRATEGY
+                # Vary the number of items used for similarity computation to measure MAE from 25 to 500 (+25 at each iteration)
+                for m in MEASURES:
 
-                #print "Computing measure", m
-                recommender.SIMILARITY_MEASURE = m
-                SumMAE, CountUsers, SumRandomMAE, UsersPredictions, UsersRandomPredictions = recommender.main()
-                MAE, RandomMAE = evaluation.evaluateAverageMAE(SumMAE, CountUsers, SumRandomMAE)
-                if recommender.AVERAGE_RANDOM_MAE == 0:
-                    recommender.AVERAGE_RANDOM_MAE = RandomMAE #used to ensure that it will be computed only once
-                    AVG_RANDOM_MAE += RandomMAE
-                    # print RandomMAE
-                # print "MAE ", MAE
-                AVG_MAE[strategy][m] += MAE
+                    #print "Computing measure", m
+                    recommender.SIMILARITY_MEASURE = m
+                    SumMAE, CountUsers, SumRandomMAE, UsersPredictions, UsersRandomPredictions = recommender.main()
+                    MAE, RandomMAE = evaluation.evaluateAverageMAE(SumMAE, CountUsers, SumRandomMAE)
+                    if recommender.AVERAGE_RANDOM_MAE == 0:
+                        recommender.AVERAGE_RANDOM_MAE = RandomMAE #used to ensure that it will be computed only once
+                        AVG_RANDOM_MAE += RandomMAE
+                    AVG_MAE[strategy][m] += MAE
 
-    for measure in AVG_MAE:
-        for mae in AVG_MAE[measure]:
-            print "Measure", measure, "Strategy",mae, " MAE ", (AVG_MAE[measure][mae] / iterations)
+            for measure in AVG_MAE:
+                for mae in AVG_MAE[measure]:
+                    print "Measure", measure, "Strategy",mae, " MAE ", (AVG_MAE[measure][mae] / iterations)
 
-    print "Random MAE ", (AVG_RANDOM_MAE / iterations)
+            print "Random MAE ", (AVG_RANDOM_MAE / iterations)
+
+            constants.NUM_USERS += 10
+
     constants.conn.close()
 
 if __name__ == '__main__':
