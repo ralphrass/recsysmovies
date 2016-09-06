@@ -34,19 +34,27 @@ def main():
     #TODO Randomize each user, items to recommend and items to compare with. Run for 'n' iterations and collect average MAE
     #TODO matplotlib
 
-    AVG_MAE = {"quanti": {}, "triple": {}}
-
-    AVG_MAE["quanti"]["gower"] = 0
-    AVG_MAE["quanti"]["cos-content"] = 0
-    AVG_MAE["quanti"]["gower-features"] = 0
-    AVG_MAE["quanti"]["cos-features"] = 0
-    AVG_MAE["triple"]["gower"] = 0
-    AVG_MAE["triple"]["cos-content"] = 0
-    AVG_MAE["triple"]["gower-features"] = 0
-    AVG_MAE["triple"]["cos-features"] = 0
-    AVG_RANDOM_MAE = 0
-
     for k in range(outsideiterations):
+
+        AVG_MAE = {"quanti": {}, "triple": {}}
+        AVG_MAE["quanti"]["gower"] = 0
+        AVG_MAE["quanti"]["cos-content"] = 0
+        AVG_MAE["quanti"]["gower-features"] = 0
+        AVG_MAE["quanti"]["cos-features"] = 0
+        AVG_MAE["triple"]["gower"] = 0
+        AVG_MAE["triple"]["cos-content"] = 0
+        AVG_MAE["triple"]["gower-features"] = 0
+        AVG_MAE["triple"]["cos-features"] = 0
+        AVG_RANDOM_MAE = 0
+        AVG_RECALL = {"quanti": {}, "triple": {}}
+        AVG_RECALL["quanti"]["gower"] = 0
+        AVG_RECALL["quanti"]["cos-content"] = 0
+        AVG_RECALL["quanti"]["gower-features"] = 0
+        AVG_RECALL["quanti"]["cos-features"] = 0
+        AVG_RECALL["triple"]["gower"] = 0
+        AVG_RECALL["triple"]["cos-content"] = 0
+        AVG_RECALL["triple"]["gower-features"] = 0
+        AVG_RECALL["triple"]["cos-features"] = 0
 
         print "Outside iteration", k
 
@@ -66,20 +74,22 @@ def main():
                     recommender.SIMILARITY_MEASURE = m
                     SumMAE, CountUsers, SumRandomMAE, UsersPredictions, UsersRandomPredictions = recommender.main()
                     MAE, RandomMAE = evaluation.evaluateAverageMAE(SumMAE, CountUsers, SumRandomMAE)
+                    Precision, Recall, F1 = evaluation.evaluatePrecisionRecallF1(UsersPredictions, CountUsers)
                     if recommender.AVERAGE_RANDOM_MAE == 0:
                         recommender.AVERAGE_RANDOM_MAE = RandomMAE #used to ensure that it will be computed only once
                         AVG_RANDOM_MAE += RandomMAE
                     AVG_MAE[strategy][m] += MAE
+                    AVG_RECALL[strategy][m] += Recall
 
-            for measure in AVG_MAE:
-                for mae in AVG_MAE[measure]:
-                    print "Measure", measure, "Strategy",mae, " MAE ", (AVG_MAE[measure][mae] / iterations)
+        constants.NUM_USERS += 10
 
-            print "Random MAE ", (AVG_RANDOM_MAE / iterations)
+        for measure in AVG_MAE:
+            for mae in AVG_MAE[measure]:
+                print "Measure", measure, "Strategy",mae, " MAE ", (AVG_MAE[measure][mae] / iterations), "Recall ", AVG_RECALL[measure][mae]
 
-            constants.NUM_USERS += 10
+        print "Random MAE ", (AVG_RANDOM_MAE / iterations)
 
-    constants.conn.close()
+        constants.conn.close()
 
 if __name__ == '__main__':
     main()
