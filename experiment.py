@@ -14,8 +14,8 @@ MEASURES = [
 
 STRATEGIES = [
     "quanti", #quantitative features (Year, MovieLens Rating, IMDB Rating, Tomato Rating)
-    #"quali", #Actors, Director, Writer
-    #"both", #quanti + quali
+    "quali", #Actors, Director, Writer
+    "both", #quanti + quali
     "triple" #both + features from trailers
 ]
 
@@ -26,8 +26,8 @@ def main():
     constants.LIMIT_ITEMS_TO_PREDICT = 100 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
     constants.LIMIT_ITEMS_TO_COMPARE = 100 # constants.MAX_ITEMS_TO_COMPARE #movies rated by each user
     recommender.RECOMMENDATION_STRATEGY = 'triple' #quanti, quali, both, triple(quanti, quali and features)
-    iterations = 10
-    outsideiterations = 10
+    iterations = 2
+    outsideiterations = 2
 
     print "Starting Experiment... ", iterations, "iterations.", constants.NUM_USERS, "users.", "recommender list size equal to", constants.PREDICTION_LIST_SIZE, "." , constants.LIMIT_ITEMS_TO_PREDICT, "items to predict for.", constants.LIMIT_ITEMS_TO_COMPARE, "items of each user to compare with."
 
@@ -38,21 +38,37 @@ def main():
 
     for k in range(outsideiterations):
 
-        AVG_MAE = {"quanti": {}, "triple": {}}
+        AVG_MAE = {"quanti": {}, "quali": {}, "both": {}, "triple": {}}
         AVG_MAE["quanti"]["gower"] = 0
         AVG_MAE["quanti"]["cos-content"] = 0
         AVG_MAE["quanti"]["gower-features"] = 0
         AVG_MAE["quanti"]["cos-features"] = 0
+        AVG_MAE["quali"]["gower"] = 0
+        AVG_MAE["quali"]["cos-content"] = 0
+        AVG_MAE["quali"]["gower-features"] = 0
+        AVG_MAE["quali"]["cos-features"] = 0
+        AVG_MAE["both"]["gower"] = 0
+        AVG_MAE["both"]["cos-content"] = 0
+        AVG_MAE["both"]["gower-features"] = 0
+        AVG_MAE["both"]["cos-features"] = 0
         AVG_MAE["triple"]["gower"] = 0
         AVG_MAE["triple"]["cos-content"] = 0
         AVG_MAE["triple"]["gower-features"] = 0
         AVG_MAE["triple"]["cos-features"] = 0
         AVG_RANDOM_MAE = 0
-        AVG_RECALL = {"quanti": {}, "triple": {}}
+        AVG_RECALL = {"quanti": {}, "quali": {}, "both": {}, "triple": {}}
         AVG_RECALL["quanti"]["gower"] = 0
         AVG_RECALL["quanti"]["cos-content"] = 0
         AVG_RECALL["quanti"]["gower-features"] = 0
         AVG_RECALL["quanti"]["cos-features"] = 0
+        AVG_RECALL["quali"]["gower"] = 0
+        AVG_RECALL["quali"]["cos-content"] = 0
+        AVG_RECALL["quali"]["gower-features"] = 0
+        AVG_RECALL["quali"]["cos-features"] = 0
+        AVG_RECALL["both"]["gower"] = 0
+        AVG_RECALL["both"]["cos-content"] = 0
+        AVG_RECALL["both"]["gower-features"] = 0
+        AVG_RECALL["both"]["cos-features"] = 0
         AVG_RECALL["triple"]["gower"] = 0
         AVG_RECALL["triple"]["cos-content"] = 0
         AVG_RECALL["triple"]["gower-features"] = 0
