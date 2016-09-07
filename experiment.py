@@ -21,10 +21,10 @@ STRATEGIES = [
 
 def main():
 
-    constants.NUM_USERS = 10 # constants.MAX_NUM_USERS
-    constants.PREDICTION_LIST_SIZE = 30 #increase at each iteration
-    constants.LIMIT_ITEMS_TO_PREDICT = 30 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
-    constants.LIMIT_ITEMS_TO_COMPARE = 30 # constants.MAX_ITEMS_TO_COMPARE #movies rated by each user
+    constants.NUM_USERS = 100 # constants.MAX_NUM_USERS
+    constants.PREDICTION_LIST_SIZE = 100 #increase at each iteration
+    constants.LIMIT_ITEMS_TO_PREDICT = 100 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
+    constants.LIMIT_ITEMS_TO_COMPARE = 100 # constants.MAX_ITEMS_TO_COMPARE #movies rated by each user
     recommender.RECOMMENDATION_STRATEGY = 'triple' #quanti, quali, both, triple(quanti, quali and features)
     iterations = 10
     outsideiterations = 10
@@ -33,6 +33,8 @@ def main():
 
     #TODO Randomize each user, items to recommend and items to compare with. Run for 'n' iterations and collect average MAE
     #TODO matplotlib
+
+    #rfile = open('results', 'a')
 
     for k in range(outsideiterations):
 
@@ -83,13 +85,23 @@ def main():
 
         constants.NUM_USERS += 10
 
-        for measure in AVG_MAE:
-            for mae in AVG_MAE[measure]:
-                print "Measure", measure, "Strategy",mae, " MAE ", (AVG_MAE[measure][mae] / iterations), "Recall ", AVG_RECALL[measure][mae]
+        with open('file.txt', 'a') as resfile:
+            for measure in AVG_MAE:
+                for mae in AVG_MAE[measure]:
+                    resmae = str(AVG_MAE[measure][mae] / iterations)
+                    resrecall = str(AVG_RECALL[measure][mae])
+                    res = str("Measure "+measure+" Strategy "+mae+" MAE "+resmae+" Recall "+resrecall)
+                    resfile.write(res)
+                    print res
+                    #print "Measure", measure, "Strategy",mae, " MAE ", (AVG_MAE[measure][mae] / iterations), "Recall ", AVG_RECALL[measure][mae]
 
+        randomresult = str(AVG_RANDOM_MAE / iterations)
+        with open('file.txt', 'a') as f:
+            f.write("Random MAE "+randomresult+"\n\n")
         print "Random MAE ", (AVG_RANDOM_MAE / iterations)
 
     constants.conn.close()
+    #rfile.close()
 
 if __name__ == '__main__':
     main()
