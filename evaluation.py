@@ -1,49 +1,92 @@
 from sklearn.metrics import mean_absolute_error
 import constants
+import utils
 
 RATING_THRESHOLD = 3
 
-def evaluateAverageMAE(SumMAE, CountUsers, SumRandomMAE):
-
+def evaluateAverageMAE(SumMAE, CountUsers):
     MAE = (SumMAE / CountUsers)
+    return MAE
 
-    if SumRandomMAE > 0:
-        RandomMAE = (SumRandomMAE / CountUsers)
-    else:
-        RandomMAE = 0
+# predictions is a list of tuples which contains: MovieLensId, MovieTitle, PredictedRating
+def evaluateMAE(user, predictions):
 
-    return MAE, RandomMAE
+    predictedRatings, realRatings = [], []
 
-def evaluate(SumMAE, CountUsers, SumRandomMAE, UsersPredictions, UsersRandomPredictions):
+    query = "SELECT rating FROM movielens_rating WHERE userId = ? AND movielensId = ?"
 
-    MAE, RandomMAE = evaluateAverageMAE(SumMAE, CountUsers, SumRandomMAE)
+    #will search for intersections
+    for prediction in predictions:
+        c = constants.conn.cursor()
+        c.execute(query, (user, prediction[0],))
+        result = c.fetchone()
 
-    print "MAE: ", MAE
-    print "Random MAE: ", RandomMAE
-    Precision, Recall, F1 = evaluatePrecisionRecallF1(UsersPredictions, CountUsers)
-    RandomPrecision, RandomRecall, RandomF1 = evaluatePrecisionRecallF1(UsersRandomPredictions, CountUsers)
-    print "Precision: ", Precision, " Recall: ", Recall, " F1: ", F1
-    print "Random Precision: ", RandomPrecision, "Random Recall: ", RandomRecall, "Random F1: ", RandomF1
+        if (type(result) is tuple):
+             predictedRatings.append(prediction[2])
+             realRatings.append(float(result[0]))
 
-    return MAE, RandomMAE, Precision, Recall, F1, RandomPrecision, RandomRecall, RandomF1
+    if len(predictedRatings) != 0:
+        return mean_absolute_error(realRatings, predictedRatings)
 
-def evaluateMAE(REAL_RATINGS, PREDICTED_RATINGS):
+    return 0
 
-    if len(PREDICTED_RATINGS) != 0:
-        mae = mean_absolute_error(REAL_RATINGS, PREDICTED_RATINGS)
-    else:
-        mae = 0
 
-    return mae
+# def evaluateMAE(REAL_RATINGS, PREDICTED_RATINGS):
+#
+#     mae = 0
+#
+#     if len(PREDICTED_RATINGS) != 0:
+#         mae = mean_absolute_error(REAL_RATINGS, PREDICTED_RATINGS)
+#
+#     return mae
 
-def evaluateRandomMAE(REAL_RATINGS, UserAverageRating):
+def evaluateRandomMAE(Users):
 
-    if len(REAL_RATINGS) != 0:
+    queryUserMovies = "SELECT rating FROM movielens_rating WHERE userId = ?"
+    SumRandomMAE = 0
+
+    for user in Users:
+
+        REAL_RATINGS = []
+        UserAverageRating = utils.getUserAverageRating(user[0])
+
+        c = constants.conn.cursor()
+        c.execute(queryUserMovies, (user[0],))
+        for rating in c.fetchall():
+            REAL_RATINGS.append(rating[0])
+
         randomMae = mean_absolute_error(REAL_RATINGS, [UserAverageRating]*len(REAL_RATINGS))
-    else:
-        randomMae = 0
-        
-    return randomMae
+        SumRandomMAE += randomMae
+
+    return (SumRandomMAE / len(Users))
+
+def evaluateUserRecall(user, userPredictions):
+
+    RATING_THRESHOLD, SumRecall = 3, 0
+    queryRelevant = "SELECT movielensId FROM movielens_rating r WHERE r.userId = ? AND r.rating > ? ORDER BY rating DESC"
+
+    predictedPredictions = [int(x[0]) for x in userPredictions]
+
+    c = constants.conn.cursor()
+    c.execute(queryRelevant, (user, RATING_THRESHOLD,)) #all movies that are relevant for this user
+    RelevantMovies = c.fetchall()
+    topPredictions = [int(x[0]) for x in RelevantMovies[:constants.PREDICTION_LIST_SIZE]]
+
+    # print "Top Movies",topPredictions
+    # print " Predicted ", predictedPredictions
+    # print "intersection", set(topPredictions) & set(predictedPredictions)
+
+    #True Positives: intersection between top recommended and positive evaluated by the user
+    TP = float(len(list(set(topPredictions) & set(predictedPredictions))))
+    FP = float(abs(constants.PREDICTION_LIST_SIZE - TP)) #False Positives
+    FN = float(abs(len(RelevantMovies) - TP)) #False Negatives
+
+    try:
+        Recall = TP / (TP+FN)
+        # print "TP: ", TP, " FP: ", FP, " FN: ", FN, "Recall ", Recall
+        return Recall
+    except ZeroDivisionError:
+        return 0
 
 def evaluatePrecisionRecallF1(UsersPredictions, CountUsers):
     global RATING_THRESHOLD
@@ -64,7 +107,7 @@ def evaluatePrecisionRecallF1(UsersPredictions, CountUsers):
         FP = float(abs(constants.PREDICTION_LIST_SIZE - TP)) #False Positives
         FN = float(abs(len(c.fetchall()) - TP)) #False Negatives
 
-        # print "TP: ", TP, " FP: ", FP, " FN: ", FN
+        print "TP: ", TP, " FP: ", FP, " FN: ", FN
 
         try:
             Precision = TP / (TP+FP)

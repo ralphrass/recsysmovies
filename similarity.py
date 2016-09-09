@@ -51,15 +51,12 @@ def computeCosineSimilarityFeatures(i, j):
 
 def computeGowerQualitative(i, j, RECOMMENDATION_STRATEGY):
 
-    SumSijk, SumDeltaijk, bothFactor = 0, 0, 0
-
-    if (RECOMMENDATION_STRATEGY == 'both' or RECOMMENDATION_STRATEGY == 'triple'):
-        bothFactor = len(constants.COLUMNS)
+    SumSijk, SumDeltaijk = 0, 0
 
     for c in constants.COLUMNS_NOMINAL:
-        iValue = i[constants.COLUMNS_NOMINAL.index(c)+bothFactor]
-        jValue = j[constants.COLUMNS_NOMINAL.index(c)+bothFactor]
-        #print iValue, jValue
+        iValue = i[constants.COLUMNS_NOMINAL.index(c)+len(constants.COLUMNS)]
+        jValue = j[constants.COLUMNS_NOMINAL.index(c)+len(constants.COLUMNS)]
+        # print iValue, jValue
         if (isValid(iValue) and isValid(jValue)):
             if (c == "genre" or c == "actors"):
                 values = iValue.split(constants.NOMINAL_SPLIT[constants.COLUMNS_NOMINAL.index(c)])
@@ -184,11 +181,9 @@ def computeSimilarity(SIMILARITY_MEASURE, movieI, movieJ, RECOMMENDATION_STRATEG
         sim = computeCosineSimilarityCollaborative(movieI, movieJ)
     elif (SIMILARITY_MEASURE == 'adjusted-cosine'):
         sim = computeAdjustedCosine(movieI, movieJ)
-    # elif (SIMILARITY_MEASURE == 'gower-features' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
     elif (SIMILARITY_MEASURE == 'gower-features' and (RECOMMENDATION_STRATEGY == 'quanti')):
         SumSijk, SumDeltaijk = computeGowerFeatures(movieI, movieJ)
         sim = SumSijk / SumDeltaijk
-    # elif (SIMILARITY_MEASURE == 'cos-features' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
     elif (SIMILARITY_MEASURE == 'cos-features' and (RECOMMENDATION_STRATEGY == 'quanti')):
         sim = computeCosineSimilarityFeatures(movieI, movieJ)
     else:
