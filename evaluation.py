@@ -40,23 +40,28 @@ def evaluateMAE(user, predictions):
 #
 #     return mae
 
-def evaluateRandomMAE(Users):
+def evaluateRandomMAE(Users, Items):
 
-    queryUserMovies = "SELECT rating FROM movielens_rating WHERE userId = ?"
+    queryUserMovies = "SELECT rating FROM movielens_rating WHERE userId = ? AND movielensid = ?"
     SumRandomMAE = 0
 
     for user in Users:
 
-        REAL_RATINGS = []
-        UserAverageRating = utils.getUserAverageRating(user[0])
+        for item in Items:
 
-        c = constants.conn.cursor()
-        c.execute(queryUserMovies, (user[0],))
-        for rating in c.fetchall():
-            REAL_RATINGS.append(rating[0])
+            REAL_RATINGS = []
+            UserAverageRating = utils.getUserAverageRating(user[0])
 
-        randomMae = mean_absolute_error(REAL_RATINGS, [UserAverageRating]*len(REAL_RATINGS))
-        SumRandomMAE += randomMae
+            c = constants.conn.cursor()
+            c.execute(queryUserMovies, (user[0],item[constants.INDEX_COLUMN_ID],))
+            result = c.fetchone()
+
+            if (type(result) is tuple):
+                REAL_RATINGS.append(result[0])
+
+        if (len(REAL_RATINGS) > 0):
+            randomMae = mean_absolute_error(REAL_RATINGS, [UserAverageRating]*len(REAL_RATINGS))
+            SumRandomMAE += randomMae
 
     return (SumRandomMAE / len(Users))
 
