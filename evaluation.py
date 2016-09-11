@@ -63,6 +63,7 @@ def evaluateRandomMAE(Users, Items):
                 REAL_RATINGS.append(result[0])
 
         if len(REAL_RATINGS) != 0:
+            randomMae = mean_absolute_error(REAL_RATINGS, [UserAverageRating]*len(REAL_RATINGS))
             SumRandomMAE += randomMae
 
     return (SumRandomMAE / len(Users))
