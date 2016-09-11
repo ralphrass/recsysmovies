@@ -47,10 +47,13 @@ def evaluateRandomMAE(Users, Items):
 
     for user in Users:
 
+        REAL_RATINGS = []
+
         for item in Items:
 
-            REAL_RATINGS = []
             UserAverageRating = utils.getUserAverageRating(user[0])
+
+            print queryUserMovies, user[0], item[constants.INDEX_COLUMN_ID]
 
             c = constants.conn.cursor()
             c.execute(queryUserMovies, (user[0],item[constants.INDEX_COLUMN_ID],))
@@ -59,8 +62,7 @@ def evaluateRandomMAE(Users, Items):
             if (type(result) is tuple):
                 REAL_RATINGS.append(result[0])
 
-        if (len(REAL_RATINGS) > 0):
-            randomMae = mean_absolute_error(REAL_RATINGS, [UserAverageRating]*len(REAL_RATINGS))
+        if len(REAL_RATINGS) != 0:
             SumRandomMAE += randomMae
 
     return (SumRandomMAE / len(Users))
