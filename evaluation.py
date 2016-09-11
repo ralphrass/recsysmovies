@@ -53,8 +53,6 @@ def evaluateRandomMAE(Users, Items):
 
             UserAverageRating = utils.getUserAverageRating(user[0])
 
-            print queryUserMovies, user[0], item[constants.INDEX_COLUMN_ID]
-
             c = constants.conn.cursor()
             c.execute(queryUserMovies, (user[0],item[constants.INDEX_COLUMN_ID],))
             result = c.fetchone()
