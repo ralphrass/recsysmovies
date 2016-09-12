@@ -1,6 +1,8 @@
 from sklearn.metrics import mean_absolute_error
 import constants
 import utils
+import random
+import numpy as np
 
 RATING_THRESHOLD = 3
 
@@ -30,24 +32,16 @@ def evaluateMAE(user, predictions):
 
     return 0
 
-
-# def evaluateMAE(REAL_RATINGS, PREDICTED_RATINGS):
-#
-#     mae = 0
-#
-#     if len(PREDICTED_RATINGS) != 0:
-#         mae = mean_absolute_error(REAL_RATINGS, PREDICTED_RATINGS)
-#
-#     return mae
-
-def evaluateRandomMAE(Users, Items):
+def evaluateRandomMAE(Users, Items, useUserAverageRating=True):
 
     queryUserMovies = "SELECT rating FROM movielens_rating WHERE userId = ? AND movielensid = ?"
     SumRandomMAE = 0
 
     for user in Users:
 
-        UserAverageRating = utils.getUserAverageRating(user[0])
+        if useUserAverageRating:
+            UserAverageRating = utils.getUserAverageRating(user[0])
+
         REAL_RATINGS = []
 
         for item in Items:
@@ -60,7 +54,10 @@ def evaluateRandomMAE(Users, Items):
                 REAL_RATINGS.append(result[0])
 
         if len(REAL_RATINGS) != 0:
-            randomMae = mean_absolute_error(REAL_RATINGS, [UserAverageRating]*len(REAL_RATINGS))
+            if useUserAverageRating:
+                randomMae = mean_absolute_error(REAL_RATINGS, [UserAverageRating]*len(REAL_RATINGS))
+            else:
+                randomMae = mean_absolute_error(REAL_RATINGS, np.random.uniform(0.5, 5, len(REAL_RATINGS)))
             SumRandomMAE += randomMae
 
     return (SumRandomMAE / len(Users))

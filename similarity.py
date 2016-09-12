@@ -24,7 +24,7 @@ def computeCosineSimilarityCollaborative(i, j):
 def computeCosineSimilarityContent(i, j, RECOMMENDATION_STRATEGY):
     vI, vJ = [], []
 
-    if (RECOMMENDATION_STRATEGY == 'quanti'):
+    if (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple'):
         for c in constants.COLUMNS:
             iValue = float(i[constants.COLUMNS.index(c)])
             jValue = float(j[constants.COLUMNS.index(c)])
@@ -119,15 +119,15 @@ def computeGowerSimilarity(i, j, RECOMMENDATION_STRATEGY, MIN, MAX):
         SumSijk, SumDeltaijk = computeGowerQuantitative(i, j, MIN, MAX)
     elif (RECOMMENDATION_STRATEGY == 'quali'):
         SumSijk, SumDeltaijk = computeGowerQualitative(i, j, RECOMMENDATION_STRATEGY)
-    elif (RECOMMENDATION_STRATEGY == 'triple'):
-        a1,b1 = computeGowerQuantitative(i, j, MIN, MAX)
-        a2,b2 = computeGowerFeatures(i, j)
-        SumSijk, SumDeltaijk = (a1+a2), (b1+b2)
     # elif (RECOMMENDATION_STRATEGY == 'triple'):
     #     a1,b1 = computeGowerQuantitative(i, j, MIN, MAX)
-    #     a2,b2 = computeGowerQualitative(i, j, RECOMMENDATION_STRATEGY)
-    #     a3,b3 = computeGowerFeatures(i, j)
-    #     SumSijk, SumDeltaijk = (a1+a2+a3), (b1+b2+b3)
+    #     a2,b2 = computeGowerFeatures(i, j)
+    #     SumSijk, SumDeltaijk = (a1+a2), (b1+b2)
+    elif (RECOMMENDATION_STRATEGY == 'triple'):
+         a1,b1 = computeGowerQuantitative(i, j, MIN, MAX)
+         a2,b2 = computeGowerQualitative(i, j, RECOMMENDATION_STRATEGY)
+         a3,b3 = computeGowerFeatures(i, j)
+         SumSijk, SumDeltaijk = (a1+a2+a3), (b1+b2+b3)
     else: #both
         a1,b1 = computeGowerQuantitative(i, j, MIN, MAX)
         a2,b2 = computeGowerQualitative(i, j, RECOMMENDATION_STRATEGY)

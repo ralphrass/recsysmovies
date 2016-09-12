@@ -20,7 +20,7 @@ COLUMNS = [
            "CAST(tomatorating AS REAL)",
            #"movielensrating",
            "CAST(imdbvotes AS NUMERIC)",
-           "CAST(year AS NUMERIC)",
+        #    "CAST(year AS NUMERIC)",
            "CAST(metascore AS REAL)",
            "CAST(tomatouserrating AS REAL)"
            ]

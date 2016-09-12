@@ -23,7 +23,8 @@ def main(Users, SelectedMovies):
     # global REAL_RATINGS, PREDICTED_RATINGS, AVERAGE_RANDOM_MAE
     loadMinMaxValues()
 
-    SumMAE, SumRecall = 0, 0
+    # SumMAE, SumRecall = 0, 0
+    SumMAE = 0
     UsersPredictions = []
 
     for user in Users:
@@ -36,9 +37,10 @@ def main(Users, SelectedMovies):
 
         topPredictions = sorted(predictions, key=lambda tup: tup[2], reverse=True)[:constants.PREDICTION_LIST_SIZE] # 2 is the index of the rating
         SumMAE += evaluateMAE(user[0], predictions) #predicted ratings for the same movies that the user rated
-        SumRecall += evaluateUserRecall(user[0], topPredictions)
+        # SumRecall += evaluateUserRecall(user[0], topPredictions)
 
-    return SumMAE, SumRecall
+    return SumMAE
+    # return SumMAE, SumRecall
 
 def predictUserRating(user, movieI):
 
