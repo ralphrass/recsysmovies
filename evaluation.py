@@ -62,7 +62,7 @@ def evaluateRandomMAE(Users, Items, useUserAverageRating=True):
 
     return (SumRandomMAE / len(Users))
 
-def evaluateUserRecall(user, userPredictions):
+def evaluateUserPrecisionRecall(user, userPredictions):
 
     RATING_THRESHOLD, SumRecall = 3, 0
     queryRelevant = "SELECT movielensId FROM movielens_rating r WHERE r.userId = ? AND r.rating > ? ORDER BY rating DESC"
@@ -74,10 +74,6 @@ def evaluateUserRecall(user, userPredictions):
     RelevantMovies = c.fetchall()
     topPredictions = [int(x[0]) for x in RelevantMovies[:constants.PREDICTION_LIST_SIZE]]
 
-    # print "Top Movies",topPredictions
-    # print " Predicted ", predictedPredictions
-    # print "intersection", set(topPredictions) & set(predictedPredictions)
-
     #True Positives: intersection between top recommended and positive evaluated by the user
     TP = float(len(list(set(topPredictions) & set(predictedPredictions))))
     FP = float(abs(constants.PREDICTION_LIST_SIZE - TP)) #False Positives
@@ -85,10 +81,10 @@ def evaluateUserRecall(user, userPredictions):
 
     try:
         Recall = TP / (TP+FN)
-        # print "TP: ", TP, " FP: ", FP, " FN: ", FN, "Recall ", Recall
-        return Recall
+        Precision = TP / (TP+FP)
+        return Recall, Precision
     except ZeroDivisionError:
-        return 0
+        return 0, 0
 
 def evaluatePrecisionRecallF1(UsersPredictions, CountUsers):
     global RATING_THRESHOLD

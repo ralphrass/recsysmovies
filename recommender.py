@@ -4,7 +4,7 @@ import string
 import random
 import utils
 from utils import appendColumns, isValid, getValue
-from evaluation import evaluateMAE, evaluateUserRecall
+from evaluation import evaluateMAE, evaluateUserPrecisionRecall
 from similarity import computeSimilarity, computeCosineSimilarityCollaborative, computeCosineSimilarityContent, computeGowerSimilarity
 
 RECOMMENDATION_STRATEGY, SIMILARITY_MEASURE = "", ""
@@ -23,8 +23,8 @@ def main(Users, SelectedMovies):
     # global REAL_RATINGS, PREDICTED_RATINGS, AVERAGE_RANDOM_MAE
     loadMinMaxValues()
 
-    # SumMAE, SumRecall = 0, 0
-    SumMAE = 0
+    SumMAE, SumRecall, SumPrecision = 0, 0, 0
+    #SumMAE = 0
     UsersPredictions = []
 
     for user in Users:
@@ -37,10 +37,11 @@ def main(Users, SelectedMovies):
 
         topPredictions = sorted(predictions, key=lambda tup: tup[2], reverse=True)[:constants.PREDICTION_LIST_SIZE] # 2 is the index of the rating
         SumMAE += evaluateMAE(user[0], predictions) #predicted ratings for the same movies that the user rated
-        # SumRecall += evaluateUserRecall(user[0], topPredictions)
+        recall, precision = evaluateUserPrecisionRecall(user[0], topPredictions)
+        SumRecall += recall
+        SumPrecision += precision
 
-    return SumMAE
-    # return SumMAE, SumRecall
+    return SumMAE, SumRecall, SumPrecision
 
 def predictUserRating(user, movieI):
 
