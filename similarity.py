@@ -215,7 +215,12 @@ def computeAdjustedCosine(i, j):
             SumDenominator1 += (ratingMovieI - user[1])**2
             SumDenominator2 += (ratingMovieJ - user[1])**2
 
-        return SumNumerator / (sqrt(SumDenominator1) * sqrt(SumDenominator2))
+        try:
+            cosine = SumNumerator / (sqrt(SumDenominator1) * sqrt(SumDenominator2))
+        except ZeroDivisionError:
+            cosine = 0
+
+        return cosine
 
 def computeSimilarity(movieI, movieJ):
     # if (SIMILARITY_MEASURE == 'gower'):
