@@ -2,29 +2,32 @@ import constants
 import recommender
 import evaluation
 import utils
+import time
+from similarity import computeAdjustedCosine, computeFeaturesSimilarity, computeFeaturesAndRatingsSimilarity
 
 MEASURES = [
     # "gower",
     "cos-content",
     # "gower-features",
-    "cos-features"
+    "cos-features",
     # "cos-collaborative",
     # "adjusted-cosine"
 ]
 
 STRATEGIES = [
-    "quanti", #quantitative features (Year, MovieLens Rating, IMDB Rating, Tomato Rating)
+    "quanti", #quantitative features (MovieLens Rating, IMDB Rating, Tomato Rating, Tomato User Rating, Metascore)
     # "quali", #Actors, Director, Writer
     # "both", #quanti + quali
-    "triple" #both + features from trailers
+    #"triple" #both + features from trailers
 ]
 
 def main():
 
-    constants.NUM_USERS = 10 # constants.MAX_NUM_USERS
-    constants.PREDICTION_LIST_SIZE = 50 #increase at each iteration
+    constants.NUM_USERS = 1 # constants.MAX_NUM_USERS
+    constants.PREDICTION_LIST_SIZE = 50 #increase at each iteration - important to measure Recall
     constants.LIMIT_ITEMS_TO_PREDICT = 100 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
-    iterations = 3
+    iterations = 1
+    LIST_INCREASE = 25
 
     print "Starting Experiment... ", iterations, "iterations.", constants.NUM_USERS, "users.", "recommender list size equal to", constants.PREDICTION_LIST_SIZE, "." , constants.LIMIT_ITEMS_TO_PREDICT, "items to predict for"
 
@@ -35,49 +38,60 @@ def main():
         Users = utils.selectRandomUsers()
         MoviesToPredict = utils.selectRandomMovies()
 
-        AVG_MAE, AVG_RECALL, AVG_PRECISION = utils.initializeLists()
-        RandomMAE, UserAverageMAE = 0, 0
+        mae, recall, precision = recommender.main(Users, MoviesToPredict, computeFeaturesAndRatingsSimilarity)
+        print "MAE ", mae, " Recall ", recall, "Precision ", precision
+        # return
 
-        for strategy in STRATEGIES:
-            recommender.RECOMMENDATION_STRATEGY = strategy
-            for m in MEASURES:
-                if not (m in AVG_MAE[strategy]):
-                    continue
+        recommender.contentBasedKnn(Users, MoviesToPredict, 1)
 
-                recommender.SIMILARITY_MEASURE = m
-                SumMAE, SumRecall, SumPrecision = recommender.main(Users, MoviesToPredict)
+        SumMAECollaborative, SumRecallCollaborative, SumPrecisionCollaborative = recommender.main(Users, MoviesToPredict,
+                                                                                   computeAdjustedCosine)
 
-                AVG_MAE[strategy][m] = utils.evaluateAverage(SumMAE, constants.NUM_USERS)
-                AVG_RECALL[strategy][m] = utils.evaluateAverage(SumRecall, constants.NUM_USERS)
-                AVG_PRECISION[strategy][m] = utils.evaluateAverage(SumPrecision, constants.NUM_USERS)
+        AVG_MAE_Collaborative = utils.evaluateAverage(SumMAECollaborative, constants.NUM_USERS)
+        AVG_RECALL_Collaborative = utils.evaluateAverage(SumRecallCollaborative, constants.NUM_USERS)
+        AVG_PRECISION_Collaborative = utils.evaluateAverage(SumPrecisionCollaborative, constants.NUM_USERS)
 
-        constants.LIMIT_ITEMS_TO_PREDICT += 25
+        print "MAE Collaborative ", AVG_MAE_Collaborative, "Recall Collaborative ", AVG_RECALL_Collaborative, " Precision Collaborative ", \
+            AVG_PRECISION_Collaborative
+
+        SumMAE, SumRecall, SumPrecision = recommender.main(Users, MoviesToPredict, computeFeaturesSimilarity)
+
+        AVG_MAE = utils.evaluateAverage(SumMAE, constants.NUM_USERS)
+        AVG_RECALL = utils.evaluateAverage(SumRecall, constants.NUM_USERS)
+        AVG_PRECISION = utils.evaluateAverage(SumPrecision, constants.NUM_USERS)
+
+
+
+        constants.LIMIT_ITEMS_TO_PREDICT += LIST_INCREASE
 
         UserAverageMAE = evaluation.evaluateRandomMAE(Users, MoviesToPredict)
         RandomMAE = evaluation.evaluateRandomMAE(Users, MoviesToPredict, False)
 
-        with open('12-09-2012-imageNet-LSTM-128-10users-100items-3iterations-25Plus-List50.txt', 'a') as resfile:
-            for measure in AVG_MAE:
-                for mae in AVG_MAE[measure]:
-                    resmae = str(AVG_MAE[measure][mae])
-                    resrecall = str(AVG_RECALL[measure][mae])
-                    resprecision = str(AVG_PRECISION[measure][mae])
-                    res = str("\nMeasure "+measure+" Strategy "+mae+" MAE "+resmae+" Recall "+resrecall + "Precision"+resprecision)
-                    #res = str("\nMeasure "+measure+" Strategy "+mae+" MAE "+resmae)
-                    resfile.write(res)
-                    print res
+        RandomRecall, RandomPrecision = evaluation.evaluateRandomPrecisionRecall(Users, MoviesToPredict)
+        print "Random Precision", RandomPrecision, "Random Recall", RandomRecall
 
-        useraverageresult = str(UserAverageMAE)
-        with open('12-09-2012-imageNet-LSTM-128-10users-100items-3iterations-25Plus-List50.txt', 'a') as f:
-            f.write("\User Average MAE "+useraverageresult+"\n\n")
+        writeResults(iterations, LIST_INCREASE, i, UserAverageMAE, RandomMAE, AVG_MAE, AVG_RECALL, AVG_PRECISION, RandomRecall, RandomPrecision)
+
         print "User Average MAE ", (UserAverageMAE)
-
-        randomresult = str(RandomMAE)
-        with open('12-09-2012-imageNet-LSTM-128-10users-100items-3iterations-25Plus-List50.txt', 'a') as f:
-            f.write("\nRandom MAE "+randomresult+"\n\n")
         print "Random MAE ", (RandomMAE)
 
     constants.conn.close()
+
+def writeResults(iterations, LIST_INCREASE, i, UserAverageMAE, RandomMAE, AVG_MAE, AVG_RECALL, AVG_PRECISION, RandomRecall, RandomPrecision):
+
+    FILE_NAME = time.strftime('%d-%m-%Y')+'-imageNet-LSTM-128-'+str(constants.NUM_USERS)+'users-'+str(constants.LIMIT_ITEMS_TO_PREDICT)+'items-1iterations-'+str(iterations)+'Plus-List'+str(LIST_INCREASE)+'.txt'
+
+    with open(FILE_NAME, 'a') as resfile:
+        striteration = str(i)+" iteration\n"
+        useraverageresult, randomresult = str(UserAverageMAE), str(RandomMAE)
+        randomRecall = str(RandomRecall)
+        randomPrecision = str(RandomPrecision)
+        resfile.write("\User Average MAE "+useraverageresult+"\nRandom MAE"+randomresult+"\n\n")
+        resfile.write("\Random Recall "+randomRecall+"\nRandom Precision "+randomPrecision+"\n\n")
+        mae, recall, precision = str(AVG_MAE), str(AVG_RECALL), str(AVG_PRECISION)
+        res = str(striteration+"\nFeatures MAE "+mae+" Recall "+recall + " Precision "+precision)
+        resfile.write(res)
+        print res
 
 if __name__ == '__main__':
     main()

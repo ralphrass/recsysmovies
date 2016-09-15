@@ -7,7 +7,8 @@ def load_features(path):
 
 if __name__ == '__main__':
 	# feat = load_features('features/feat_128_loss_1.bin')
-	feat = load_features('res_neurons_128_feat_1024_scenes_350.bin')
+	feat = load_features('res_neurons_128_feat_1024_scenes_350.bin') # LSTM 128 imagenet
+	# feat = load_features('res_neurons_32_feat_1024_scenes_350.bin') # GRU 32 imagenet
 	print 'nb trailer features', len(feat)
 
 	# conn = sqlite3.connect("database.db")

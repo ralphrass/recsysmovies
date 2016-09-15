@@ -3,22 +3,36 @@ import random
 
 def initializeLists():
 
-    AVG_MAE = {"quanti": {"cos-content": 0, "cos-features": 0},
-               "triple": {"cos-content": 0}}
-    AVG_RECALL = {"quanti": {"cos-content": 0, "cos-features": 0},
-               "triple": {"cos-content": 0}}
-    AVG_PRECISION = {"quanti": {"cos-content": 0, "cos-features": 0},
-               "triple": {"cos-content": 0}}
-    #AVG_MAE = {"quanti": {"gower": 0, "cos-content": 0, "gower-features": 0, "cos-features": 0},
-    #           "quali": {"gower": 0}, "both": {"gower": 0}, "triple": {"gower": 0, "cos-content": 0}}
+    AVG_MAE = {"quanti": {"cos-content": 0, "cos-features": 0} }
+    AVG_RECALL = {"quanti": {"cos-content": 0, "cos-features": 0} }
+    AVG_PRECISION = {"quanti": {"cos-content": 0, "cos-features": 0} }
 
-    #AVG_RECALL = {"quanti": {"gower": 0, "cos-content": 0, "gower-features": 0, "cos-features": 0},
-    #           "quali": {"gower": 0}, "both": {"gower": 0}, "triple": {"gower": 0, "cos-content": 0}}
+
+    # AVG_MAE = {"quanti": {"cos-content": 0, "cos-features": 0} }
+               #"triple": {"cos-content": 0}}
+    # AVG_RECALL = {"quanti": {"cos-content": 0, "cos-features": 0} }
+               #"triple": {"cos-content": 0}}
+    # AVG_PRECISION = {"quanti": {"cos-content": 0, "cos-features": 0} }
+               #"triple": {"cos-content": 0}}
+
+    # AVG_MAE = {"quanti": {"cos-content": 0, "cos-features": 0, "adjusted-cosine": 0} }
+               #"triple": {"cos-content": 0}}
+    # AVG_RECALL = {"quanti": {"cos-content": 0, "cos-features": 0, "adjusted-cosine": 0} }
+               #"triple": {"cos-content": 0}}
+    # AVG_PRECISION = {"quanti": {"cos-content": 0, "cos-features": 0, "adjusted-cosine": 0} }
+               #"triple": {"cos-content": 0}}
+
+    # AVG_MAE = {"quanti": {"gower": 0, "cos-content": 0, "gower-features": 0, "cos-features": 0},
+    #            "quali": {"gower": 0}, "both": {"gower": 0}, "triple": {"gower": 0, "cos-content": 0}}
+    # AVG_PRECISION = {"quanti": {"gower": 0, "cos-content": 0, "gower-features": 0, "cos-features": 0},
+    #            "quali": {"gower": 0}, "both": {"gower": 0}, "triple": {"gower": 0, "cos-content": 0}}
+    # AVG_RECALL = {"quanti": {"gower": 0, "cos-content": 0, "gower-features": 0, "cos-features": 0},
+    #            "quali": {"gower": 0}, "both": {"gower": 0}, "triple": {"gower": 0, "cos-content": 0}}
 
     return AVG_MAE, AVG_RECALL, AVG_PRECISION
 
 def evaluateAverage(Sum, Count):
-    Result = (Sum / Count)
+    Result = (Sum / float(Count))
     return Result
 
 def appendColumns(columns):
@@ -70,10 +84,11 @@ def selectRandomMovies():
 
 def getUserAverageRating(user):
 
-    queryUserAverage = "SELECT SUM(rating)/COUNT(*) FROM movielens_rating WHERE userId = ?"
+    # queryUserAverage = "SELECT SUM(rating)/COUNT(*) FROM movielens_rating WHERE userId = ?"
+    queryUserAverage = "SELECT avgrating FROM movielens_user WHERE userId = ?"
 
     c = constants.conn.cursor()
     c.execute(queryUserAverage, (user,))
-    UserAverageRating = c.fetchone()
-
+    UserAverageRating = float(c.fetchone()[0])
+    
     return UserAverageRating

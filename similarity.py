@@ -1,26 +1,41 @@
 import constants
 from utils import isValid
-import scipy
-from scipy.spatial.distance import cosine
+# import scipy
+# from scipy.spatial.distance import cosine
 from math import sqrt
+from sklearn.metrics.pairwise import cosine_similarity
+from scipy.stats import pearsonr
+import numpy as np
 
-def computeCosine(i, j):
-    a = scipy.array(i)
-    b = scipy.array(j)
+def computePearson(i, j):
+    a = np.array(i)
+    b = np.array(j)
     if (a.size == 0 and b.size == 0):
         return 0
     else:
-        return cosine(a, b)
+        pearson = pearsonr(a, b)
+        # print pearson
+        return pearson[0]
 
-def computeCosineSimilarityCollaborative(i, j):
-    movieIid = i[constants.INDEX_COLUMN_ID]
-    movieJid = j[constants.INDEX_COLUMN_ID]
+def computeCosine(i, j):
+    a = np.array(i)
+    b = np.array(j)
+    if (a.size == 0 and b.size == 0):
+        return 0
+    else:
+        a = a.reshape(1, -1)
+        b = b.reshape(1, -1)
+        cosine = cosine_similarity(a, b)
+        return cosine[0][0] #Matrix Kernel
 
-    constants.CURSOR_MOVIEI.execute("SELECT rating FROM movielens_rating r WHERE r.movielensID = ? AND EXISTS (SELECT * FROM movielens_rating r2 WHERE r2.movielensID = ? AND r2.userId = r.userId)", (movieIid,movieJid,))
-    constants.CURSOR_MOVIEJ.execute("SELECT rating FROM movielens_rating r WHERE r.movielensID = ? AND EXISTS (SELECT * FROM movielens_rating r2 WHERE r2.movielensID = ? AND r2.userId = r.userId)", (movieJid,movieIid,))
-    return computeCosine(CURSOR_MOVIEI.fetchall(), CURSOR_MOVIEJ.fetchall())
+# def computeCosineSimilarityCollaborative(i, j):
+#     movieIid = i[constants.INDEX_COLUMN_ID]
+#     movieJid = j[constants.INDEX_COLUMN_ID]
+#
+#     constants.CURSOR_MOVIEI.execute("SELECT rating FROM movielens_rating r WHERE r.movielensID = ? AND EXISTS (SELECT * FROM movielens_rating r2 WHERE r2.movielensID = ? AND r2.userId = r.userId)", (movieIid,movieJid,))
+#     constants.CURSOR_MOVIEJ.execute("SELECT rating FROM movielens_rating r WHERE r.movielensID = ? AND EXISTS (SELECT * FROM movielens_rating r2 WHERE r2.movielensID = ? AND r2.userId = r.userId)", (movieJid,movieIid,))
+#     return computeCosine(CURSOR_MOVIEI.fetchall(), CURSOR_MOVIEJ.fetchall())
 
-##TODO cosine qualitative
 def computeCosineSimilarityContent(i, j, RECOMMENDATION_STRATEGY):
     vI, vJ = [], []
 
@@ -48,6 +63,38 @@ def computeCosineSimilarityFeatures(i, j):
     featuresJ = constants.FEATURES[j[constants.INDEX_COLUMN_TRAILER_ID_USER_MOVIE]]
 
     return computeCosine(featuresI, featuresJ)
+
+def computeFeaturesAndRatingsSimilarity(i, j):
+    featuresI = constants.FEATURES[i[constants.INDEX_COLUMN_TRAILER_ID_ALL_MOVIES]]
+    featuresJ = constants.FEATURES[j[constants.INDEX_COLUMN_TRAILER_ID_USER_MOVIE]]
+
+    movieIId = i[constants.INDEX_COLUMN_ID]
+    movieJId = j[constants.INDEX_COLUMN_ID+1]
+
+    # select all the ratings of movie I from users that also rated movie J
+    sqlI = "SELECT r1.rating FROM movielens_rating r1, movielens_rating r2 WHERE r1.userid = r2.userid " \
+          "AND r1.movielensid = ? AND r2.movielensid = ?"
+    c = constants.conn.cursor()
+    c.execute(sqlI, (movieIId, movieJId,))
+    ratingsI = np.array([x[0] for x in c.fetchall()])
+    sqlJ = sqlI.replace("r1.rating", "r2.rating")
+    c = constants.conn.cursor()
+    c.execute(sqlJ, (movieIId, movieJId,))
+    ratingsJ = np.array([x[0] for x in c.fetchall()])
+
+    vI = np.hstack((featuresI, ratingsI))
+    vJ = np.hstack((featuresJ, ratingsJ))
+    # print ratingsI
+    # print len(ratingsI)
+    # print ratingsJ
+    # print len(ratingsJ)
+    # print vI
+    # print vJ
+    # print len(vI)
+    # print len(vJ)
+
+    return computeCosine(vI, vJ)
+
 
 def computeGowerQualitative(i, j, RECOMMENDATION_STRATEGY):
 
@@ -143,50 +190,57 @@ def computeAdjustedCosine(i, j):
     SumNumerator, SumDenominator1, SumDenominator2 = 0, 0, 0
 
     # Select users that rated both movies
-    query = "SELECT r.userId FROM movielens_rating r WHERE r.movielensId = ? INTERSECT SELECT r.userId FROM movielens_rating r WHERE r.movielensId = ?"
-    constants.CURSOR_MOVIEI.execute(query, (i[constants.INDEX_COLUMN_ID],j[constants.INDEX_COLUMN_ID]))
-    users = constants.CURSOR_MOVIEI.fetchall()
+    query = "SELECT r.userId, u.avgrating FROM movielens_rating r JOIN movielens_user u ON u.userid = r.userId WHERE r.movielensId = ?"
+    queryIntersect = query+" INTERSECT "+query
+    c = constants.conn.cursor()
+    c.execute(queryIntersect, (i[constants.INDEX_COLUMN_ID],j[constants.INDEX_COLUMN_ID+1],))
+    users = c.fetchall()
 
     if not users:
         return 0
     else:
         for user in users:
-
-            query = "SELECT SUM(r.rating)/COUNT(*) FROM movielens_rating r WHERE r.userId = ?"
-            constants.CURSOR_MOVIEI.execute(query, (user[0]))
-            userAverage = constants.CURSOR_MOVIEI.fetchone()
-
             query = "SELECT r.rating FROM movielens_rating r WHERE r.userId = ? AND r.movielensId = ?"
+            c = constants.conn.cursor()
+            c.execute(query, (user[0], i[constants.INDEX_COLUMN_ID],))
+            ratingMovieI = c.fetchone()[0]
 
-            constants.CURSOR_MOVIEJ.execute(query, (user[0], i[constants.INDEX_COLUMN_ID]))
-            ratingMovieI = constants.CURSOR_MOVIEJ.fetchone()
+            c = constants.conn.cursor()
+            c.execute(query, (user[0], j[constants.INDEX_COLUMN_ID+1],))
+            ratingMovieJ = c.fetchone()[0]
 
-            constants.CURSOR_MOVIEJ.execute(query, (user[0], j[constants.INDEX_COLUMN_ID]))
-            ratingMovieJ = constants.CURSOR_MOVIEJ.fetchone()
+            # print "User ", user[0], " average ", userAverage, " Rating ", ratingMovieI, " Rating 2 ", ratingMovieJ
 
-            print "User ", user[0], " average ", userAverage, " Rating ", ratingMovieI, " Rating 2 ", ratingMovieJ
-
-            SumNumerator += ( (ratingMovieI - userAverage) * (ratingMovieJ - userAverage) )
-            SumDenominator1 += (ratingMovieI - userAverage)**2
-            SumDenominator2 += (ratingMovieJ - userAverage)**2
+            SumNumerator += ( (ratingMovieI - user[1]) * (ratingMovieJ - user[1]) )
+            SumDenominator1 += (ratingMovieI - user[1])**2
+            SumDenominator2 += (ratingMovieJ - user[1])**2
 
         return SumNumerator / (sqrt(SumDenominator1) * sqrt(SumDenominator2))
 
-def computeSimilarity(SIMILARITY_MEASURE, movieI, movieJ, RECOMMENDATION_STRATEGY, MIN, MAX):
-    if (SIMILARITY_MEASURE == 'gower'):
-        sim = computeGowerSimilarity(movieI, movieJ, RECOMMENDATION_STRATEGY, MIN, MAX)
-    elif (SIMILARITY_MEASURE == 'cos-content' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
-        sim = computeCosineSimilarityContent(movieI, movieJ, RECOMMENDATION_STRATEGY)
-    elif (SIMILARITY_MEASURE == 'cos-collaborative'):
-        sim = computeCosineSimilarityCollaborative(movieI, movieJ)
-    elif (SIMILARITY_MEASURE == 'adjusted-cosine'):
-        sim = computeAdjustedCosine(movieI, movieJ)
-    elif (SIMILARITY_MEASURE == 'gower-features' and (RECOMMENDATION_STRATEGY == 'quanti')):
-        SumSijk, SumDeltaijk = computeGowerFeatures(movieI, movieJ)
-        sim = SumSijk / SumDeltaijk
-    elif (SIMILARITY_MEASURE == 'cos-features' and (RECOMMENDATION_STRATEGY == 'quanti')):
-        sim = computeCosineSimilarityFeatures(movieI, movieJ)
-    else:
-        sim = 0
+def computeSimilarity(movieI, movieJ):
+    # if (SIMILARITY_MEASURE == 'gower'):
+    #     sim = computeGowerSimilarity(movieI, movieJ, RECOMMENDATION_STRATEGY, MIN, MAX)
+    # elif (SIMILARITY_MEASURE == 'cos-content' and (RECOMMENDATION_STRATEGY == 'quanti' or RECOMMENDATION_STRATEGY == 'triple')):
+    #     sim = computeCosineSimilarityContent(movieI, movieJ, RECOMMENDATION_STRATEGY)
+    # elif (SIMILARITY_MEASURE == 'cos-collaborative'):
+    #     sim = computeCosineSimilarityCollaborative(movieI, movieJ)
+    # elif (SIMILARITY_MEASURE == 'adjusted-cosine'):
+    #     sim = computeAdjustedCosine(movieI, movieJ)
+    # elif (SIMILARITY_MEASURE == 'gower-features' and (RECOMMENDATION_STRATEGY == 'quanti')):
+    #     SumSijk, SumDeltaijk = computeGowerFeatures(movieI, movieJ)
+    #     sim = SumSijk / SumDeltaijk
+    # elif (SIMILARITY_MEASURE == 'cos-features' and (RECOMMENDATION_STRATEGY == 'quanti')):
+    #     sim = computeCosineSimilarityFeatures(movieI, movieJ)
+    # else:
+    #     sim = 0
+    # sim = computeCosineSimilarityFeatures(movieI, movieJ)
+    sim = computeFeaturesSimilarity(movieI, movieJ, computeCosine)
 
     return sim
+
+def computeFeaturesSimilarity(i, j):
+
+    featuresI = constants.FEATURES[i[constants.INDEX_COLUMN_TRAILER_ID_ALL_MOVIES]]
+    featuresJ = constants.FEATURES[j[constants.INDEX_COLUMN_TRAILER_ID_USER_MOVIE]]
+
+    return computeCosine(featuresI, featuresJ)

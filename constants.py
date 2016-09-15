@@ -13,13 +13,13 @@ NUM_USERS = 1
 MIN_FEATURE_VALUE = -1
 MAX_FEATURE_VALUE = 1
 
-FEATURES = load_features('res_neurons_128_feat_1024_scenes_350.bin') #dictionary
+FEATURES = load_features('res_neurons_places_gru_32_feat_1024_scenes_350.bin') #dictionary
 
 COLUMNS = [
            "CAST(imdbrating AS REAL)",
            "CAST(tomatorating AS REAL)",
            #"movielensrating",
-           "CAST(imdbvotes AS NUMERIC)",
+        #    "CAST(imdbvotes AS NUMERIC)",
         #    "CAST(year AS NUMERIC)",
            "CAST(metascore AS REAL)",
            "CAST(tomatouserrating AS REAL)"
@@ -46,6 +46,7 @@ INDEX_COLUMN_TRAILER_ID_USER_MOVIE = len(COLUMNS)+len(COLUMNS_NOMINAL)+3
 
 def appendQueryAllMovies():
     QUERY_ALL_MOVIES = ", mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1"
+    QUERY_ALL_MOVIES += " AND CAST(imdbvotes AS NUMERIC) > 15"
     return QUERY_ALL_MOVIES
 
 def appendQueryMovie():
