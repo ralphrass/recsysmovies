@@ -1,6 +1,12 @@
 import sqlite3
-from utils import appendColumns
+# from utils import appendColumns
 from opening_feat import load_features
+
+def appendColumns(columns):
+    columnList = []
+    for c in columns:
+        columnList.append(c)
+    return columnList
 
 conn = sqlite3.connect('database.db')
 
@@ -13,7 +19,7 @@ NUM_USERS = 1
 MIN_FEATURE_VALUE = -1
 MAX_FEATURE_VALUE = 1
 
-FEATURES = load_features('res_neurons_places_gru_32_feat_1024_scenes_350.bin') #dictionary
+FEATURES = load_features('../res_neurons_places_gru_32_feat_1024_scenes_350.bin') #dictionary
 
 COLUMNS = [
            "CAST(imdbrating AS REAL)",
