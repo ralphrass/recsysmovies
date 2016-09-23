@@ -7,7 +7,7 @@ import utils
 sqlite3.register_adapter(np.ndarray, utils.adapt_array)
 # Converts TEXT to np.array when selecting
 sqlite3.register_converter("array", utils.convert_array)
-conn = sqlite3.connect('../database.db')
+conn = sqlite3.connect('../database.db', detect_types=sqlite3.PARSE_DECLTYPES)
 
 # TOTAL_USERS = 5363
 TOTAL_USERS = float(4897)

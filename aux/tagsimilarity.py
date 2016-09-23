@@ -36,7 +36,7 @@ for user_profile in user_profiles:
         # movie_tfidf = movie[1].reshape(1, -1)
         # user_tfidf = user_tfidf.reshape(1, -1)
 
-        print user_profile[1]
+        print user_profile
 
         # print movie_tfidf.astype(np.float), type(movie_tfidf)
         exit()
