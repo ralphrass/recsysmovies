@@ -67,6 +67,8 @@ def predictUserRating(user, movieI, simFunction=computeFeaturesSimilarity):
     #     print k[0][constants.INDEX_COLUMN_TITLE+1], k[0][len(constants.COLUMNS)], k[1]
     # exit()
 
+    # TODO multiply the similarity by the division of the item average rating by the largest average rating of all items
+
     for k in kMostSimilar:
         movieJ = k[0]
         sim = k[1]

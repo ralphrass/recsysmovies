@@ -63,8 +63,8 @@ def loadMinMaxValues(conn, COLUMNS):
         MAX.append(float(getValue('MAX', c, conn)))
 
 def selectRandomUsers():
-    #Must have at least 200 ratings
-    queryUsers = "SELECT u.userid FROM movielens_user u JOIN movielens_rating r ON r.userId = u.userId GROUP BY r.userId HAVING COUNT(r.movielensId) > 200"
+    # Must have at least 200 ratings and used tags
+    queryUsers = "SELECT u.userid FROM movielens_user_with_tags u JOIN movielens_rating r ON r.userId = u.userId GROUP BY r.userId HAVING COUNT(r.movielensId) > 200"
 
     c = constants.conn.cursor()
     c.execute(queryUsers)

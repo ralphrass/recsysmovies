@@ -45,12 +45,12 @@ INDEX_COLUMN_TRAILER_ID_ALL_MOVIES = len(COLUMNS)+len(COLUMNS_NOMINAL)+2
 INDEX_COLUMN_TRAILER_ID_USER_MOVIE = len(COLUMNS)+len(COLUMNS_NOMINAL)+3
 
 def appendQueryAllMovies():
-    QUERY_ALL_MOVIES = ", mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1"
+    QUERY_ALL_MOVIES = ", mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN movielens_tag mt ON mt.movielensid = mm.movielensid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1"
     QUERY_ALL_MOVIES += " AND CAST(imdbvotes AS NUMERIC) > 15"
     return QUERY_ALL_MOVIES
 
 def appendQueryMovie():
-    QUERY_MOVIE = ", r.rating, mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN movielens_rating r ON r.movielensid = mm.movielensid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 WHERE r.userid = ? AND r.movielensId != ?"
+    QUERY_MOVIE = ", r.rating, mm.movielensId, m.title, t.id FROM movies m JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid JOIN movielens_tag mt ON mt.movielensid = mm.movielensid JOIN movielens_rating r ON r.movielensid = mm.movielensid JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 WHERE r.userid = ? AND r.movielensId != ?"
     return QUERY_MOVIE
 
 def getQueryAllMovies():

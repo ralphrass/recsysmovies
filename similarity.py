@@ -73,7 +73,7 @@ def computeFeaturesAndRatingsSimilarity(i, j):
 
     # select all the ratings of movie I from users that also rated movie J
     sqlI = "SELECT r1.rating FROM movielens_rating r1, movielens_rating r2 WHERE r1.userid = r2.userid " \
-          "AND r1.movielensid = ? AND r2.movielensid = ?"
+          "AND r1.movielensid = ? AND r2.movielensid = ? ORDER BY r1.userId"
     c = constants.conn.cursor()
     c.execute(sqlI, (movieIId, movieJId,))
     ratingsI = np.array([x[0] for x in c.fetchall()])

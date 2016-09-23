@@ -23,9 +23,9 @@ STRATEGIES = [
 
 def main():
 
-    constants.NUM_USERS = 1 # constants.MAX_NUM_USERS
+    constants.NUM_USERS = 10 # constants.MAX_NUM_USERS
     constants.PREDICTION_LIST_SIZE = 50 #increase at each iteration - important to measure Recall
-    constants.LIMIT_ITEMS_TO_PREDICT = 100 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
+    constants.LIMIT_ITEMS_TO_PREDICT = 200 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
     iterations = 1
     LIST_INCREASE = 25
 
@@ -39,7 +39,7 @@ def main():
         MoviesToPredict = utils.selectRandomMovies()
 
         mae, recall, precision = recommender.main(Users, MoviesToPredict, computeFeaturesAndRatingsSimilarity)
-        print "MAE ", mae, " Recall ", recall, "Precision ", precision
+        print "MAE Features and Ratings ", mae, " Recall Features and Ratings ", recall, "Precision  Features and Ratings ", precision
         # return
 
         recommender.contentBasedKnn(Users, MoviesToPredict, 1)
