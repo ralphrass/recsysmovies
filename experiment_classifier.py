@@ -1,16 +1,20 @@
 import sqlite3
-import recommender
+import recommender_classifier
 import evaluation
 import utils
 import time
+from opening_feat import load_features
 
 def main():
 
-    RECOMMENDATION_LIST = 5 #increase at each iteration - important to measure Recall
+    RECOMMENDATION_LIST = 10 #increase at each iteration - important to measure Recall
     iterations = 5
     LIST_INCREASE = 5
 
     conn = sqlite3.connect('database.db')
+
+    DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+    LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
 
     print "Starting Experiment... ", iterations, "iterations.", "recommender list size equal to", RECOMMENDATION_LIST, "."
     avgrecall_lowlevel = 0
@@ -27,20 +31,20 @@ def main():
         Users = utils.selectRandomUsers(conn)
         # MoviesToPredict = utils.selectTrainingMovies(conn)
 
-        recall, precision = recommender.recommend(conn, Users, RECOMMENDATION_LIST, recommender.lowlevel)
+        recall, precision = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, LOW_LEVEL_FEATURES)
         print "Low-Level Recall", recall, "Low-Level Precision", precision
         avgrecall_lowlevel += recall
         avgprecision_lowlevel += precision
 
-        recall, precision = recommender.recommend(conn, Users, RECOMMENDATION_LIST, recommender.deep)
+        recall, precision = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, DEEP_FEATURES)
         print "Deep Recall", recall, "Deep Precision", precision
         avgrecall_deep += recall
         avgprecision_deep += precision
-
-        recall, precision = recommender.recommend(conn, Users, RECOMMENDATION_LIST, recommender.hybrid)
-        print "Hybrid Recall", recall, "Hybrid Precision", precision
-        avgrecall_hybrid += recall
-        avgprecision_hybrid += precision
+        #
+        # recall, precision = recommender.recommend(conn, Users, RECOMMENDATION_LIST, recommender.hybrid)
+        # print "Hybrid Recall", recall, "Hybrid Precision", precision
+        # avgrecall_hybrid += recall
+        # avgprecision_hybrid += precision
 
         RECOMMENDATION_LIST += LIST_INCREASE
 

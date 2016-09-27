@@ -1,17 +1,14 @@
 # import constants
 from evaluation import evaluateMAE, evaluateUserPrecisionRecall
 # from similarity import computeFeaturesSimilarity
-from utils import evaluateAverage, getUserMovies, getEliteTestRatingSet, \
-    getRandomMovieSet, getUserBaseline, getItemBaseline, getMovieRatings1, getMovieRatings2
+import utils
 from sklearn.metrics.pairwise import cosine_similarity
-from opening_feat import load_features
 import numpy as np
+from sklearn import svm
 import sqlite3
 
 # conn = sqlite3.connect('database.db')
 
-DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
-LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
 
 AVG_ALL_RATINGS = 3.51611876907599
 
@@ -83,48 +80,61 @@ def hybrid(movieI, movieJ):
         return 0
 
 
-def recommend(conn, Users, N, simFunction):
+def recommend(conn, Users, N, featureVector):
+
+    # global DEEP_FEATURES, LOW_LEVEL_FEATURES
 
     SumRecall, SumPrecision = 0, 0
 
     for user in Users:
-        # print "Testing for User", user[0], "..."
+        print "Training User", user[0], " model..."
 
-        userBaseline = getUserBaseline(conn, user[0])
-        userMovies = getUserMovies(conn, user[0])
-        test = getEliteTestRatingSet(conn, user[0])
+        # select 70% of the users ratings for training
 
-        if len(test) == 0:
+        # userBaseline = getUserBaseline(conn, user[0])
+        userMoviesTraining, userMoviesTest = utils.getUserTrainingTestMovies(conn, user[0])
+        # userInstances = utils.getUserInstances(userMovies, DEEP_FEATURES)
+        # test = getEliteTestRatingSet(conn, user[0])
+
+        if len(userMoviesTraining) == 0:
             continue
 
-        # print len(test), "items in elite set."
+        userInstances, userValues = utils.getUserInstances(userMoviesTraining, featureVector)
+
+        clf = svm.SVR(kernel='rbf')
+        clf.fit(userInstances, userValues)
+        print len(userMoviesTest), "items in elite set."
         hits = 0
         # For each item rated high by the user
-        for eliteMovie in test:
+        for eliteMovie in userMoviesTest:
             predictions = []
+            print "Elite Movie", eliteMovie
 
-            prediction = predictUserRating(conn, userMovies, eliteMovie, simFunction, userBaseline)
-            predictions.append((eliteMovie[1], eliteMovie[2], prediction))
+            # prediction = predictUserRating(conn, userMovies, eliteMovie, simFunction, userBaseline)
+            prediction = clf.predict([DEEP_FEATURES[eliteMovie[0]]])
+            predictions.append((eliteMovie[2], eliteMovie[3], prediction))
 
-            randomMovies = getRandomMovieSet(conn, user[0])
+            randomMovies = utils.getRandomMovieSet(conn, user[0])
 
             for randomMovie in randomMovies:
-                prediction = predictUserRating(conn, userMovies, randomMovie, simFunction, userBaseline)
+                prediction = clf.predict([featureVector[randomMovie[3]]])
                 predictions.append((randomMovie[1], randomMovie[2], prediction))
 
+            print sorted(predictions, key=lambda tup: tup[2], reverse=True)
             predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
-            eliteIndex = predictions_ids.index(eliteMovie[1])
+            eliteIndex = predictions_ids.index(eliteMovie[2])
             if eliteIndex <= N:
                 hits += 1
 
-        # print hits, "hits"
+        print hits, "hits"
+        exit()
 
-        SumRecall += hits / float(len(test))
+        SumRecall += hits / float(len(userMoviesTest))
         SumPrecision += SumRecall / float(N)
 
     size = len(Users)
-    avgRecall = evaluateAverage(SumRecall, size)
-    avgPrecision = evaluateAverage(SumPrecision, size)
+    avgRecall = utils.evaluateAverage(SumRecall, size)
+    avgPrecision = utils.evaluateAverage(SumPrecision, size)
 
     return avgPrecision, avgRecall
 
@@ -139,7 +149,7 @@ def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline):
     AllSimilarities = [(movieJ, simFunction(movieI, movieJ)) for movieJ in userMovies]
     topSimilar = sorted(AllSimilarities, key=lambda tup: tup[1], reverse=True)[:30]
 
-    itemBaseline = getItemBaseline(conn, userBaseline, movieI[1])
+    itemBaseline = utils.getItemBaseline(conn, userBaseline, movieI[1])
     # print userBaseline, itemBaseline
 
     try:
