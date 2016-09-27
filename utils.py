@@ -1,8 +1,7 @@
-import constants
+import io
+import numpy as np
 import random
 import sqlite3
-import numpy as np
-import io
 
 def initializeLists():
 
@@ -60,37 +59,116 @@ def getValue(function, attribute, conn):
     CURSOR_VALUE.execute(query)
     return CURSOR_VALUE.fetchone()[0]
 
-def loadMinMaxValues(conn, COLUMNS):
-    for c in COLUMNS:
-        MIN.append(float(getValue('MIN', c, conn)))
-        MAX.append(float(getValue('MAX', c, conn)))
+# def loadMinMaxValues(conn, COLUMNS):
+#     for c in COLUMNS:
+#         MIN.append(float(getValue('MIN', c, conn)))
+#         MAX.append(float(getValue('MAX', c, conn)))
 
-def selectRandomUsers():
+def selectRandomUsers(conn, limit):
     # Must have at least 200 ratings and used tags
-    queryUsers = "SELECT u.userid FROM movielens_user_with_tags u JOIN movielens_rating r ON r.userId = u.userId GROUP BY r.userId HAVING COUNT(r.movielensId) > 200"
+    queryUsers = "SELECT u.userid, u.avgrating " \
+                 "FROM movielens_user u " \
+                 "JOIN movielens_rating r ON r.userId = u.userId " \
+                 "JOIN movielens_movie m ON m.movielensid = r.movielensid " \
+                 "JOIN trailers t ON t.imdbid = m.imdbidtt " \
+                 "WHERE t.best_file = 1 " \
+                 "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200"
 
-    c = constants.conn.cursor()
+    c = conn.cursor()
     c.execute(queryUsers)
-    Users = random.sample(c.fetchall(), constants.NUM_USERS) #Users for this iteration
+    Users = random.sample(c.fetchall(), limit) #Users for this iteration
+    # Users = c.fetchall()
 
     return Users
 
-def selectRandomMovies():
+def selectTrainingMovies(conn):
 
-    QUERY_ALL_MOVIES = constants.getQueryAllMovies()
+    query = "SELECT 1, mm.movielensId, m.title, t.id " \
+            "FROM movies m " \
+            "JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid " \
+            "JOIN trailers t ON t.imdbID = m.imdbID " \
+            "AND t.best_file = 1 " \
+            # "AND CAST(imdbvotes AS NUMERIC) > 5"
 
-    c = constants.conn.cursor()
-    c.execute(QUERY_ALL_MOVIES)
-    SelectedMovies = random.sample(c.fetchall(), constants.LIMIT_ITEMS_TO_PREDICT)
+    c = conn.cursor()
+    c.execute(query)
+    # SelectedMovies = random.sample(c.fetchall(), limit)
+    SelectedMovies = c.fetchall()
 
     return SelectedMovies
 
-def getUserAverageRating(user):
+def getUserMovies(conn, user):
+    sql = "SELECT r.rating, mm.movielensId, m.title, t.id " \
+          "FROM movies m " \
+          "JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid " \
+          "JOIN movielens_rating r ON r.movielensid = mm.movielensid " \
+          "JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 " \
+          "WHERE r.userid = ? "
+    # print sql, user
+    c = conn.cursor()
+    c.execute(sql, (user,))
+    return c.fetchall()
+
+# Equal to 5 stars ==> [Greater than 4 stars]
+def getEliteTestRatingSet(conn, user):
+    sql = "SELECT m.rating , m.movielensid, mm.title, t.id " \
+          "FROM movielens_rating_elite m " \
+          "JOIN movielens_movie mm ON mm.movielensid = m.movielensid " \
+          "JOIN trailers t ON t.imdbID = mm.imdbIDtt " \
+          "AND t.best_file = 1 " \
+          "WHERE userid = ?"
+
+    c = conn.cursor()
+    c.execute(sql, (user,))
+    return c.fetchall()
+
+# Randomly select items unrated by the user
+def getRandomMovieSet(conn, user):
+    sql = "SELECT 1, mm.movielensId, m.title, t.id " \
+          "FROM movies m " \
+          "JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid " \
+          "JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 " \
+          "EXCEPT " \
+          "SELECT 1, mm.movielensId, m.title, t.id " \
+          "FROM movies m " \
+          "JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid " \
+          "JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 " \
+          "JOIN movielens_rating r ON r.movielensid = mm.movielensid " \
+          "WHERE r.userid = ? "
+    # print sql, user
+    limit = 100
+    c = conn.cursor()
+    c.execute(sql, (user,))
+    Movies = random.sample(c.fetchall(), limit)
+    # print Movies
+
+    return Movies
+
+def getUserBaseline(conn, user):
+    sql = "SELECT SUM(rating - 3.5161)/COUNT(rating) " \
+          "FROM movielens_rating " \
+          "WHERE userid = ?"
+    # print sql, user
+    c = conn.cursor()
+    c.execute(sql, (user,))
+    return c.fetchone()[0]
+
+def getItemBaseline(conn, userbaseline, movie):
+    sql = "SELECT SUM(rating - ? - 3.5161)/COUNT(rating) " \
+          "FROM movielens_rating " \
+          "WHERE movielensid = ?"
+    # print sql, userbaseline, movie
+    c = conn.cursor()
+    c.execute(sql, (userbaseline, movie,))
+    return c.fetchone()[0]
+
+
+def getUserAverageRating(conn, user):
 
     # queryUserAverage = "SELECT SUM(rating)/COUNT(*) FROM movielens_rating WHERE userId = ?"
     queryUserAverage = "SELECT avgrating FROM movielens_user WHERE userId = ?"
 
-    c = constants.conn.cursor()
+    c = conn.cursor()
     c.execute(queryUserAverage, (user,))
     UserAverageRating = float(c.fetchone()[0])
     

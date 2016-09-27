@@ -1,7 +1,7 @@
 import sqlite3
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-np.set_printoptions(threshold=np.inf)
+np.set_printoptions(threshold=3000)
 
 conn = sqlite3.connect('../database.db')
 
@@ -17,7 +17,7 @@ sql_movies = "SELECT mm.title, m.tfidfprofile " \
 
 c = conn.cursor()
 c.execute(sql_user)
-user_profiles = c.fetchall()
+user_profiles = [(x[0], np.array(x[1])) for x in c.fetchall()]
 
 c = conn.cursor()
 c.execute(sql_movies)
@@ -32,11 +32,12 @@ for user_profile in user_profiles:
     user_recommendations = []
 
     for movie in movie_profiles:
-        # movie_tfidf = np.array(movie[1])
+        movie_tfidf = np.array(movie[1])
         # movie_tfidf = movie[1].reshape(1, -1)
         # user_tfidf = user_tfidf.reshape(1, -1)
 
         print user_profile
+        print movie_tfidf
 
         # print movie_tfidf.astype(np.float), type(movie_tfidf)
         exit()
@@ -46,8 +47,8 @@ for user_profile in user_profiles:
 
     users[userid] = user_recommendations
 
-    print users
-    exit()
+    # print users
+    # exit()
 
 kMostSimilar = sorted(users[userid], key=lambda tup: tup[1], reverse=True)[:30]
 print kMostSimilar

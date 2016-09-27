@@ -1,84 +1,172 @@
-import constants
+# import constants
 from evaluation import evaluateMAE, evaluateUserPrecisionRecall
-from similarity import computeFeaturesSimilarity
+# from similarity import computeFeaturesSimilarity
+from utils import evaluateAverage, getUserMovies, getEliteTestRatingSet, getRandomMovieSet, getUserBaseline, getItemBaseline
+from sklearn.metrics.pairwise import cosine_similarity
+from opening_feat import load_features
 
+DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
+
+AVG_ALL_RATINGS = 3.51611876907599
 
 # for every item to predict, determine the class based on the proximity of k items that the user rated
-def contentBasedKnn(Users, SelectedMovies, k=1):
+# def contentBasedKnn(Users, SelectedMovies, k=1):
+#     for user in Users:
+#         print "Computing for User ", user[0], "..."
+#         for movieI in SelectedMovies:
+#             AllSimilarities = []
+#             c = constants.conn.cursor()
+#             c.execute(constants.getQueryUserMovies(), (user[0], movieI[constants.INDEX_COLUMN_ID],))
+#             for userMovie in c.fetchall():
+#                 sim = computeFeaturesSimilarity(movieI, userMovie)
+#                 AllSimilarities.append((userMovie[constants.INDEX_COLUMN_TITLE+1], sim))
+#             print movieI[constants.INDEX_COLUMN_TITLE]
+#             print AllSimilarities
+#             return
+
+def lowlevel(movieI, movieJ):
+
+    global LOW_LEVEL_FEATURES
+
+    traileri = movieI[3]
+    trailerj = movieJ[3]
+
+    try:
+        featuresI = LOW_LEVEL_FEATURES[traileri]
+        featuresJ = LOW_LEVEL_FEATURES[trailerj]
+    except KeyError:
+        return 0
+
+    cos = cosine_similarity([featuresI], [featuresJ])
+
+    return cos[0][0]
+
+def deep(movieI, movieJ):
+
+    global DEEP_FEATURES
+
+    traileri = movieI[3]
+    trailerj = movieJ[3]
+
+    featuresI = DEEP_FEATURES[traileri]
+    featuresJ = DEEP_FEATURES[trailerj]
+
+    return cosine_similarity([featuresI], [featuresJ])[0][0]
+
+def recommend(conn, Users, SelectedMovies, simFunction):
+
+    # SumMAE, SumRecall, SumPrecision = 0, 0, 0
+    SumRecall, SumPrecision = 0, 0
+    N = 10
+
     for user in Users:
-        print "Computing for User ", user[0], "..."
-        for movieI in SelectedMovies:
-            AllSimilarities = []
-            c = constants.conn.cursor()
-            c.execute(constants.getQueryUserMovies(), (user[0], movieI[constants.INDEX_COLUMN_ID],))
-            for userMovie in c.fetchall():
-                sim = computeFeaturesSimilarity(movieI, userMovie)
-                AllSimilarities.append((userMovie[constants.INDEX_COLUMN_TITLE+1], sim))
-            print movieI[constants.INDEX_COLUMN_TITLE]
-            print AllSimilarities
-            return
+        print "Training for User", user[0], "..."
+        # predictions = []
+        userBaseline = getUserBaseline(conn, user[0])
+        userMovies = getUserMovies(conn, user[0])
+        #Predict rating for each movie - Training
+        # for movieI in SelectedMovies:
+        #     prediction = predictUserRating(conn, user, movieI, simFunction)
+        #     predictions.append((movieI[0], movieI[1], prediction))
+        #
+        # print "Training end."
 
-
-def main(Users, SelectedMovies, simFunction):
-
-    SumMAE, SumRecall, SumPrecision = 0, 0, 0
-
-    for user in Users:
-        print "Computing for User ", user[0], "..."
-        predictions = []
-        #Predict rating for each movie
-        for movieI in SelectedMovies:
-            prediction = predictUserRating(user, movieI, simFunction)
-            predictions.append((movieI[constants.INDEX_COLUMN_ID], movieI[constants.INDEX_COLUMN_TITLE], prediction))
-
-        topPredictions = sorted(predictions, key=lambda tup: tup[2], reverse=True)[:constants.PREDICTION_LIST_SIZE] # 2 is the index of the rating
+        # topPredictions = sorted(predictions, key=lambda tup: tup[2], reverse=True)[:PREDICTION_LIST_SIZE] # 2 is the index of the rating
         # print "Top Predictions ", topPredictions
-        SumMAE += evaluateMAE(user[0], predictions) #predicted ratings for the same movies that the user rated
-        predictionsIds = [int(x[0]) for x in topPredictions]
-        recall, precision = evaluateUserPrecisionRecall(user[0], predictionsIds)
-        SumRecall += recall
-        SumPrecision += precision
+        # print topPredictions
+        # exit()
+        # SumMAE += evaluateMAE(conn, user[0], predictions) #predicted ratings for the same movies that the user rated
+        # predictionsIds = [int(x[0]) for x in predictions]
 
-    return SumMAE, SumRecall, SumPrecision
+        test = getEliteTestRatingSet(conn, user[0])
 
-def predictUserRating(user, movieI, simFunction=computeFeaturesSimilarity):
+        if len(test) == 0:
+            continue
 
-    global SIMILARITY_MEASURE, RECOMMENDATION_STRATEGY, MIN, MAX
+        print len(test), "items in elite set."
+        eliteMoviesIds = [x[1] for x in test]
 
-    SumSimilarityTimesRating, SumSimilarity = float(0), float(0)
+        hits = 0
+        # For each item rated high by the user
+        for eliteMovie in test:
+            predictions = []
+            print "Elite Movie", eliteMovie
+
+            prediction = predictUserRating(conn, userMovies, eliteMovie, simFunction, userBaseline)
+            # print "Prediction", prediction
+            # exit()
+            predictions.append((eliteMovie[1], eliteMovie[2], prediction))
+
+            randomMovies = getRandomMovieSet(conn, user[0])
+
+            for randomMovie in randomMovies:
+                prediction = predictUserRating(conn, userMovies, randomMovie, simFunction, userBaseline)
+                predictions.append((randomMovie[1], randomMovie[2], prediction))
+
+            # print "Test Set", test
+            print "Sorted Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
+            predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
+            # print "IDS:", predictions_ids
+            eliteIndex = predictions_ids.index(eliteMovie[1])
+            print eliteIndex, "\n"
+            if eliteIndex <= N:
+                hits += 1
+            # print indexes
+        # exit()
+
+        print hits, "hits"
+
+        SumRecall += hits / float(len(test))
+        SumPrecision += SumRecall / float(N)
+
+        print "Test end."
+
+        # recall, precision = evaluateUserPrecisionRecall(conn, user[0], predictionsIds, PREDICTION_LIST_SIZE)
+        # SumRecall += recall
+        # SumPrecision += precision
+
+    size = len(Users)
+    # avgMAE = evaluateAverage(SumMAE, size)
+    avgRecall = evaluateAverage(SumRecall, size)
+    avgPrecision = evaluateAverage(SumPrecision, size)
+
+    return avgPrecision, avgRecall
+    # return avgMAE, avgPrecision, avgRecall
+
+
+def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline):
+
+    global AVG_ALL_RATINGS
+
+    SumSimilarityTimesRating = float(0)
+    SumSimilarity = float(0)
     prediction = 0
-    AllSimilarities = []
-    # print "User ", user[0], " Movie ", movieI, " Value ", movieI[constants.INDEX_COLUMN_ID]
-    c = constants.conn.cursor()
-    c.execute(constants.getQueryUserMovies(), (user[0], movieI[constants.INDEX_COLUMN_ID],))
-
-    #Find the k most similar items to I that the user also rated
-    for movieJ in c.fetchall():
-        # sim = computeSimilarity(movieI, movieJ)
-        sim = simFunction(movieI, movieJ)
-        AllSimilarities.append((movieJ, sim))
-
-    #TODO Change this value
-    kMostSimilar = sorted(AllSimilarities, key=lambda tup: tup[1], reverse=True)[:30] #index 1 is the similarity
-
-    # print "Movie "
-    # print movieI[constants.INDEX_COLUMN_TITLE], movieI[len(constants.COLUMNS)]
-    # for k in kMostSimilar:
-    #     print k[0][constants.INDEX_COLUMN_TITLE+1], k[0][len(constants.COLUMNS)], k[1]
-    # exit()
+    AllSimilarities = [(movieJ, simFunction(movieI, movieJ)) for movieJ in userMovies]
+    topSimilar = sorted(AllSimilarities, key=lambda tup: tup[1], reverse=True)[:30]
 
     # TODO multiply the similarity by the division of the item average rating by the largest average rating of all items
+    itemBaseline = getItemBaseline(conn, userBaseline, movieI[1])
 
-    for k in kMostSimilar:
-        movieJ = k[0]
-        sim = k[1]
-        SumSimilarityTimesRating += (sim * float(movieJ[constants.INDEX_COLUMN_RATING]))
+    # print userBaseline, itemBaseline
+
+    try:
+        baselineUserItem = AVG_ALL_RATINGS + userBaseline + itemBaseline
+    except TypeError:
+        print "Type Error", userBaseline, "Movie Id", movieI[1]
+        baselineUserItem = AVG_ALL_RATINGS + userBaseline
+
+    for movieJ, sim in topSimilar:
+        # sim = simFunction(movieI, movieJ)
+        # print "Similarity", sim, "Movie I", movieI, "Movie J", movieJ
+        SumSimilarityTimesRating += (sim * (float(movieJ[0] - baselineUserItem)))  # similarity * user rating
         SumSimilarity += abs(sim)
+        # SumSimilarity += sim
 
-    if (SumSimilarityTimesRating > 0 and SumSimilarity > 0):
-        prediction = SumSimilarityTimesRating / SumSimilarity
+    if (SumSimilarityTimesRating != 0 and SumSimilarity != 0):
+        prediction = (SumSimilarityTimesRating / SumSimilarity) + baselineUserItem
 
     return prediction
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()

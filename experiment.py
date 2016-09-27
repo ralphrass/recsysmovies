@@ -1,9 +1,8 @@
-import constants
+import sqlite3
 import recommender
 import evaluation
 import utils
 import time
-from similarity import computeAdjustedCosine, computeFeaturesSimilarity, computeFeaturesAndRatingsSimilarity
 
 MEASURES = [
     # "gower",
@@ -23,63 +22,54 @@ STRATEGIES = [
 
 def main():
 
-    constants.NUM_USERS = 10 # constants.MAX_NUM_USERS
-    constants.PREDICTION_LIST_SIZE = 50 #increase at each iteration - important to measure Recall
-    constants.LIMIT_ITEMS_TO_PREDICT = 200 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
+    NUM_USERS = 10 # constants.MAX_NUM_USERS
+    RECOMMENDATION_LIST = 50 #increase at each iteration - important to measure Recall
+    # ITEMS_TO_PREDICT = 2000 #constants.MAX_ITEMS_TO_PREDICT #list of all movies
+
     iterations = 1
     LIST_INCREASE = 25
 
-    print "Starting Experiment... ", iterations, "iterations.", constants.NUM_USERS, "users.", "recommender list size equal to", constants.PREDICTION_LIST_SIZE, "." , constants.LIMIT_ITEMS_TO_PREDICT, "items to predict for"
+    conn = sqlite3.connect('database.db')
+
+    print "Starting Experiment... ", iterations, "iterations.", NUM_USERS, "users.", "recommender list size equal to", RECOMMENDATION_LIST, "."
 
     for i in range(iterations):
 
         print i, "iteration."
 
-        Users = utils.selectRandomUsers()
-        MoviesToPredict = utils.selectRandomMovies()
+        Users = utils.selectRandomUsers(conn, NUM_USERS)
+        MoviesToPredict = utils.selectTrainingMovies(conn)
 
-        mae, recall, precision = recommender.main(Users, MoviesToPredict, computeFeaturesAndRatingsSimilarity)
-        print "MAE Features and Ratings ", mae, " Recall Features and Ratings ", recall, "Precision  Features and Ratings ", precision
-        # return
+        recall, precision = recommender.recommend(conn, Users, MoviesToPredict, recommender.lowlevel)
+        print "Avg Recall", recall, "Avg Precision", precision
+        recall, precision = recommender.recommend(conn, Users, MoviesToPredict, recommender.deep)
+        print "Avg Recall", recall, "Avg Precision", precision
 
-        recommender.contentBasedKnn(Users, MoviesToPredict, 1)
+        # mae, recall, precision = recommender.recommend(conn, Users, MoviesToPredict, recommender.lowlevel, RECOMMENDATION_LIST)
+        # print "MAE Features and Ratings ", mae, " Recall Features and Ratings ", recall, "Precision  Features and Ratings ", precision
 
-        SumMAECollaborative, SumRecallCollaborative, SumPrecisionCollaborative = recommender.main(Users, MoviesToPredict,
-                                                                                   computeAdjustedCosine)
+        # mae, recall, precision = recommender.recommend(conn, Users, MoviesToPredict, recommender.deep,
+        #                                                RECOMMENDATION_LIST)
+        # print "MAE Features and Ratings ", mae, " Recall Features and Ratings ", recall, "Precision  Features and Ratings ", precision
 
-        AVG_MAE_Collaborative = utils.evaluateAverage(SumMAECollaborative, constants.NUM_USERS)
-        AVG_RECALL_Collaborative = utils.evaluateAverage(SumRecallCollaborative, constants.NUM_USERS)
-        AVG_PRECISION_Collaborative = utils.evaluateAverage(SumPrecisionCollaborative, constants.NUM_USERS)
+        # ITEMS_TO_PREDICT += LIST_INCREASE
 
-        print "MAE Collaborative ", AVG_MAE_Collaborative, "Recall Collaborative ", AVG_RECALL_Collaborative, " Precision Collaborative ", \
-            AVG_PRECISION_Collaborative
+        # UserAverageMAE = evaluation.evaluateRandomMAE(conn, Users, MoviesToPredict, True)
+        # RandomMAE = evaluation.evaluateRandomMAE(conn, Users, MoviesToPredict, False)
 
-        SumMAE, SumRecall, SumPrecision = recommender.main(Users, MoviesToPredict, computeFeaturesSimilarity)
+        # RandomRecall, RandomPrecision = evaluation.evaluateRandomPrecisionRecall(conn, Users, MoviesToPredict, RECOMMENDATION_LIST)
+        # print "Random Precision", RandomPrecision, "Random Recall", RandomRecall
 
-        AVG_MAE = utils.evaluateAverage(SumMAE, constants.NUM_USERS)
-        AVG_RECALL = utils.evaluateAverage(SumRecall, constants.NUM_USERS)
-        AVG_PRECISION = utils.evaluateAverage(SumPrecision, constants.NUM_USERS)
+        # writeResults(iterations, LIST_INCREASE, i, UserAverageMAE, RandomMAE, AVG_MAE, AVG_RECALL, AVG_PRECISION, RandomRecall, RandomPrecision, NUM_USERS, ITEMS_TO_PREDICT)
 
+        # print "User Average MAE ", (UserAverageMAE)
+        # print "Random MAE ", (RandomMAE)
 
+    conn.close()
 
-        constants.LIMIT_ITEMS_TO_PREDICT += LIST_INCREASE
+def writeResults(iterations, LIST_INCREASE, i, UserAverageMAE, RandomMAE, AVG_MAE, AVG_RECALL, AVG_PRECISION, RandomRecall, RandomPrecision, NUM_USERS, LIMIT_ITEMS_TO_PREDICT):
 
-        UserAverageMAE = evaluation.evaluateRandomMAE(Users, MoviesToPredict)
-        RandomMAE = evaluation.evaluateRandomMAE(Users, MoviesToPredict, False)
-
-        RandomRecall, RandomPrecision = evaluation.evaluateRandomPrecisionRecall(Users, MoviesToPredict)
-        print "Random Precision", RandomPrecision, "Random Recall", RandomRecall
-
-        writeResults(iterations, LIST_INCREASE, i, UserAverageMAE, RandomMAE, AVG_MAE, AVG_RECALL, AVG_PRECISION, RandomRecall, RandomPrecision)
-
-        print "User Average MAE ", (UserAverageMAE)
-        print "Random MAE ", (RandomMAE)
-
-    constants.conn.close()
-
-def writeResults(iterations, LIST_INCREASE, i, UserAverageMAE, RandomMAE, AVG_MAE, AVG_RECALL, AVG_PRECISION, RandomRecall, RandomPrecision):
-
-    FILE_NAME = time.strftime('%d-%m-%Y')+'-imageNet-LSTM-128-'+str(constants.NUM_USERS)+'users-'+str(constants.LIMIT_ITEMS_TO_PREDICT)+'items-1iterations-'+str(iterations)+'Plus-List'+str(LIST_INCREASE)+'.txt'
+    FILE_NAME = time.strftime('%d-%m-%Y')+'-imageNet-LSTM-128-'+str(NUM_USERS)+'users-'+str(LIMIT_ITEMS_TO_PREDICT)+'items-1iterations-'+str(iterations)+'Plus-List'+str(LIST_INCREASE)+'.txt'
 
     with open(FILE_NAME, 'a') as resfile:
         striteration = str(i)+" iteration\n"
