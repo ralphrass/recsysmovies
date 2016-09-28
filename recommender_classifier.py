@@ -96,38 +96,40 @@ def recommend(conn, Users, N, featureVector):
         # userInstances = utils.getUserInstances(userMovies, DEEP_FEATURES)
         # test = getEliteTestRatingSet(conn, user[0])
 
-        if len(userMoviesTraining) == 0:
+        if len(userMoviesTest) == 0:
             continue
 
         userInstances, userValues = utils.getUserInstances(userMoviesTraining, featureVector)
 
         clf = svm.SVR(kernel='rbf')
         clf.fit(userInstances, userValues)
-        print len(userMoviesTest), "items in elite set."
+        # print len(userMoviesTest), "items in elite set."
         hits = 0
         # For each item rated high by the user
         for eliteMovie in userMoviesTest:
             predictions = []
-            print "Elite Movie", eliteMovie
+            # print "Elite Movie", eliteMovie
 
             # prediction = predictUserRating(conn, userMovies, eliteMovie, simFunction, userBaseline)
-            prediction = clf.predict([DEEP_FEATURES[eliteMovie[0]]])
+            prediction = clf.predict([featureVector[eliteMovie[0]]])
             predictions.append((eliteMovie[2], eliteMovie[3], prediction))
 
             randomMovies = utils.getRandomMovieSet(conn, user[0])
 
             for randomMovie in randomMovies:
-                prediction = clf.predict([featureVector[randomMovie[3]]])
-                predictions.append((randomMovie[1], randomMovie[2], prediction))
-
-            print sorted(predictions, key=lambda tup: tup[2], reverse=True)
+                try:
+                    prediction = clf.predict([featureVector[randomMovie[3]]])
+                    predictions.append((randomMovie[1], randomMovie[2], prediction))
+                except KeyError:
+                    continue
+            # print sorted(predictions, key=lambda tup: tup[2], reverse=True)
             predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
             eliteIndex = predictions_ids.index(eliteMovie[2])
             if eliteIndex <= N:
                 hits += 1
 
-        print hits, "hits"
-        exit()
+        # print hits, "hits"
+        # exit()
 
         SumRecall += hits / float(len(userMoviesTest))
         SumPrecision += SumRecall / float(N)

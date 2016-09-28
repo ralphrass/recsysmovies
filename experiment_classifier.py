@@ -4,17 +4,35 @@ import evaluation
 import utils
 import time
 from opening_feat import load_features
+from sklearn import preprocessing
+import numpy as np
+import itertools as it
+
+# low_level_features = load_features('low_level_dict.bin') # normalize
+
 
 def main():
 
     RECOMMENDATION_LIST = 10 #increase at each iteration - important to measure Recall
-    iterations = 5
+    iterations = 1
     LIST_INCREASE = 5
 
     conn = sqlite3.connect('database.db')
 
     DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
     LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
+
+    arr = np.array([x[1] for x in LOW_LEVEL_FEATURES.iteritems()])
+    normalized_ll_features = preprocessing.normalize(arr)
+    LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), normalized_ll_features)}
+
+    HYBRID_FEATURES = {}
+
+    for k in DEEP_FEATURES.iterkeys():
+        try:
+            HYBRID_FEATURES[k] = np.append(DEEP_FEATURES[k], LOW_LEVEL_FEATURES[k])
+        except KeyError:
+            HYBRID_FEATURES[k] = DEEP_FEATURES[k]
 
     print "Starting Experiment... ", iterations, "iterations.", "recommender list size equal to", RECOMMENDATION_LIST, "."
     avgrecall_lowlevel = 0
@@ -41,10 +59,10 @@ def main():
         avgrecall_deep += recall
         avgprecision_deep += precision
         #
-        # recall, precision = recommender.recommend(conn, Users, RECOMMENDATION_LIST, recommender.hybrid)
-        # print "Hybrid Recall", recall, "Hybrid Precision", precision
-        # avgrecall_hybrid += recall
-        # avgprecision_hybrid += precision
+        recall, precision = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, HYBRID_FEATURES)
+        print "Hybrid Recall", recall, "Hybrid Precision", precision
+        avgrecall_hybrid += recall
+        avgprecision_hybrid += precision
 
         RECOMMENDATION_LIST += LIST_INCREASE
 
