@@ -44,7 +44,9 @@ def getValue(function, attribute, conn):
 
 def selectRandomUsers(conn):
     # Must have at least 200 ratings and used tags
-    queryUsers = "SELECT u.userid, u.avgrating " \
+
+    # queryUsers = "SELECT u.userid, u.avgrating " \
+    queryUsers = "SELECT DISTINCT u.userid, u.avgrating " \
                  "FROM movielens_user u " \
                  "JOIN movielens_rating r ON r.userId = u.userId " \
                  "JOIN movielens_movie m ON m.movielensid = r.movielensid " \
@@ -109,7 +111,6 @@ def getRandomMovieSet(conn, user):
           "JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid " \
           "JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 " \
           "WHERE EXISTS (SELECT movielensid FROM movielens_rating r WHERE r.movielensid = mm.movielensid) " \
-          "AND CAST(imdbvotes AS NUMERIC) > 200 " \
           "EXCEPT " \
           "SELECT 1, mm.movielensId, m.title, t.id " \
           "FROM movies m " \
@@ -117,11 +118,16 @@ def getRandomMovieSet(conn, user):
           "JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 " \
           "JOIN movielens_rating r ON r.movielensid = mm.movielensid " \
           "WHERE r.userid = ? "
+    # "AND CAST(imdbvotes AS NUMERIC) > 200 " \
     # print sql, user
     limit = 100
     c = conn.cursor()
     c.execute(sql, (user,))
-    Movies = random.sample(c.fetchall(), limit)
+    all_movies = c.fetchall()
+    if len(all_movies) == 0:
+        return 0
+
+    Movies = random.sample(all_movies, limit)
     # print Movies
 
     return Movies
@@ -202,14 +208,18 @@ def getUserTrainingTestMovies(conn, user):
           "JOIN movies ms ON ms.imdbid = t.imdbid " \
           "WHERE t.best_file = 1 " \
           "AND r.userid = ? " \
-          "AND CAST(ms.imdbvotes AS NUMERIC) > 200 "
+          # "AND CAST(ms.imdbvotes AS NUMERIC) > 100 "
     c = conn.cursor()
     c.execute(sql, (user,))
 
     all_movies = c.fetchall()
 
-    training_set = random.sample(all_movies, int(len(all_movies)*0.7))
-    test_set = [x for x in all_movies if x not in training_set and x[1] > 4]
+    try:
+        training_set = random.sample(all_movies, int(len(all_movies)*0.8))
+        test_set = [x for x in all_movies if x not in training_set and x[1] > 4]
+    except:
+        print "Error"
+        raise
 
     return training_set, test_set
 

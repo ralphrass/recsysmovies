@@ -9,7 +9,7 @@ import random
 
 
 AVG_ALL_RATINGS = 3.51611876907599
-
+STD_DEVIATION = 1.098732183
 
 # def collaborative(movieI, movieJ):
 #
@@ -80,6 +80,8 @@ def hybrid(movieI, movieJ):
 
 def recommend_random(conn, Users, N):
 
+    global AVG_ALL_RATINGS, STD_DEVIATION
+
     SumRecall, SumPrecision = 0, 0
 
     for user in Users:
@@ -95,13 +97,18 @@ def recommend_random(conn, Users, N):
             predictions = []
             # print "Elite Movie", eliteMovie
             prediction = random.uniform(0.5, 5)
+            # prediction = random.gauss(AVG_ALL_RATINGS, STD_DEVIATION)
             predictions.append((eliteMovie[2], eliteMovie[3], prediction))
 
             randomMovies = utils.getRandomMovieSet(conn, user[0])
 
+            if len(randomMovies) == 0:
+                break
+
             for randomMovie in randomMovies:
                 try:
                     predictions.append((randomMovie[1], randomMovie[2], random.uniform(0.5, 5)))
+                    # predictions.append((randomMovie[1], randomMovie[2],random.gauss(AVG_ALL_RATINGS, STD_DEVIATION)))
                 except KeyError:
                     continue
 
@@ -135,8 +142,8 @@ def recommend(conn, Users, N, featureVector):
     for user in Users:
         # print "Training User", user[0], " model..."
         count += 1
-        if count % 2000 == 0:
-            print "2000 users evaluated"
+        if count % 1000 == 0:
+            print "1000 users evaluated"
 
         # select 70% of the users ratings for training
 

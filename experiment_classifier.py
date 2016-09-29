@@ -13,6 +13,8 @@ from multiprocessing import Pool
 conn = sqlite3.connect('database.db')
 Users = utils.selectRandomUsers(conn)
 
+print "Full users dataset contains", len(Users), "users"
+
 def extract_features():
     DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
     arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
@@ -97,8 +99,10 @@ def main():
 
     # Users = utils.selectRandomUsers(conn)
 
-    p = Pool(5)
+    p = Pool(2)
     print(p.map(run, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
+    # p = Pool(1)
+    # print(p.map(run, [1]))
 
     # for i in range(iterations):
     #
@@ -148,7 +152,9 @@ def main():
 
 def run(RECOMMENDATION_LIST):
 
-    global Users, conn
+    global Users
+
+    conn = sqlite3.connect('database.db')
 
     LOW_LEVEL_FEATURES, DEEP_FEATURES, HYBRID_FEATURES = extract_features()
 
@@ -156,38 +162,35 @@ def run(RECOMMENDATION_LIST):
 
     precision, recall, mae = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, LOW_LEVEL_FEATURES)
     print "Low-Level Recall", recall, "Low-Level Precision", precision, "For iteration with", RECOMMENDATION_LIST
-    avgrecall_lowlevel = recall
-    avgprecision_lowlevel = precision
-    # avgmae_lowlevel += mae
+    # avgrecall_lowlevel = recall
+    # avgprecision_lowlevel = precision
 
     precision, recall, mae = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, DEEP_FEATURES)
     print "Deep Recall", recall, "Deep Precision", precision, "For iteration with", RECOMMENDATION_LIST
-    avgrecall_deep = recall
-    avgprecision_deep = precision
-    # avgmae_deep += mae
+    # avgrecall_deep = recall
+    # avgprecision_deep = precision
 
     precision, recall, mae = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, HYBRID_FEATURES)
     print "Hybrid Recall", recall, "Hybrid Precision", precision, "For iteration with", RECOMMENDATION_LIST
-    avgrecall_hybrid = recall
-    avgprecision_hybrid = precision
-    # avgmae_hybrid += mae
+    # avgrecall_hybrid = recall
+    # avgprecision_hybrid = precision
 
     precision, recall = recommender_classifier.recommend_random(conn, Users, RECOMMENDATION_LIST)
     print "Random Recall", recall, "Random Precision",  precision, "For iteration with", RECOMMENDATION_LIST
-    avgrecall_random = recall
-    avgprecision_random = precision
+    # avgrecall_random = recall
+    # avgprecision_random = precision
 
-    print "AVG FULL Low-Level Recall ", avgrecall_lowlevel
-    print "AVG FULL Low-Level Precision ", avgprecision_lowlevel
-    # print "AVG FULL Low-Level MAE ", (avgmae_lowlevel / iterations)
-    print "AVG FULL Deep Recall ", avgrecall_deep
-    print "AVG FULL Deep Precision", avgprecision_deep
-    # print "AVG FULL Deep MAE ", (avgmae_deep / iterations)
-    print "AVG FULL Hybrid Recall ", avgrecall_hybrid
-    print "AVG FULL Hybrid Precision ", avgprecision_hybrid
-    # print "AVG FULL Hybrid MAE ", (avgmae_hybrid / iterations)
-    print "AVG FULL Random Recall ", avgrecall_random
-    print "AVG FULL Random Precision ", avgprecision_random
+    # print "AVG FULL Low-Level Recall ", avgrecall_lowlevel
+    # print "AVG FULL Low-Level Precision ", avgprecision_lowlevel
+    # # print "AVG FULL Low-Level MAE ", (avgmae_lowlevel / iterations)
+    # print "AVG FULL Deep Recall ", avgrecall_deep
+    # print "AVG FULL Deep Precision", avgprecision_deep
+    # # print "AVG FULL Deep MAE ", (avgmae_deep / iterations)
+    # print "AVG FULL Hybrid Recall ", avgrecall_hybrid
+    # print "AVG FULL Hybrid Precision ", avgprecision_hybrid
+    # # print "AVG FULL Hybrid MAE ", (avgmae_hybrid / iterations)
+    # print "AVG FULL Random Recall ", avgrecall_random
+    # print "AVG FULL Random Precision ", avgprecision_random
 
 
 
