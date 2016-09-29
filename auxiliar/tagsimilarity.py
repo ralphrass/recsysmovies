@@ -1,7 +1,7 @@
 import sqlite3
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-np.set_printoptions(threshold=3000)
+np.set_printoptions(threshold=np.inf)
 
 conn = sqlite3.connect('../database.db')
 
@@ -10,8 +10,8 @@ conn = sqlite3.connect('../database.db')
 # sql_user = "SELECT userid, tfidfprofile " \
 #       "FROM movielens_user_tfidf_profile "
 
-sql_user = "SELECT DISTINCT u.userid FROM movielens_rating r " \
-           "JOIN movielens_tag t ON t.movielensid = r.movielensid AND t.userid = r.userid "
+sql_user = "SELECT DISTINCT r.userid FROM movielens_rating r " \
+           "JOIN movielens_tag t ON t.movielensid = r.movielensID AND t.userid = r.userid "
 
 # sql_movies = "SELECT mm.title, m.tfidfprofile " \
 #              "FROM movielens_movie_tfidf_profile m " \
@@ -19,17 +19,21 @@ sql_user = "SELECT DISTINCT u.userid FROM movielens_rating r " \
 #              "JOIN movielens_test_dataset mtd ON mtd.movielensid = m.movielensid "
 
 sql_movies = "SELECT DISTINCT m.movielensid FROM movielens_movie m " \
-             "JOIN movielens_tag t ON t.movielensid = r.movielensid"
+             "JOIN movielens_tag t ON t.movielensid = m.movielensid"
 
 c = conn.cursor()
 c.execute(sql_user)
 # user_profiles = [(x[0], np.array(x[1])) for x in c.fetchall()]
 user_profiles = c.fetchall()
 
+print len(user_profiles)
+
 c = conn.cursor()
 c.execute(sql_movies)
 # movie_profiles = [(x[0], np.array(x[1])) for x in c.fetchall()]
 movie_profiles = c.fetchall()
+
+print len(movie_profiles)
 
 users = {}
 
@@ -110,17 +114,17 @@ for user_profile in user_profiles:
         # movie_tfidf = movie[1].reshape(1, -1)
         # user_tfidf = user_tfidf.reshape(1, -1)
 
-        print user_tfidf
-        print movie_tfidf
+        # print user_tfidf
+        # print movie_tfidf
 
-        sim = cosine_similarity(movie_tfidf, user_tfidf)
+        sim = cosine_similarity([movie_tfidf], [user_tfidf])
         user_recommendations.append((movie[0], sim))
 
         print sim
 
-        exit()
 
     users[userid] = user_recommendations
+    exit()
 
     # print users
     # exit()
