@@ -3,35 +3,6 @@ import numpy as np
 import random
 import sqlite3
 
-def initializeLists():
-
-    AVG_MAE = {"quanti": {"cos-content": 0, "cos-features": 0} }
-    AVG_RECALL = {"quanti": {"cos-content": 0, "cos-features": 0} }
-    AVG_PRECISION = {"quanti": {"cos-content": 0, "cos-features": 0} }
-
-
-    # AVG_MAE = {"quanti": {"cos-content": 0, "cos-features": 0} }
-               #"triple": {"cos-content": 0}}
-    # AVG_RECALL = {"quanti": {"cos-content": 0, "cos-features": 0} }
-               #"triple": {"cos-content": 0}}
-    # AVG_PRECISION = {"quanti": {"cos-content": 0, "cos-features": 0} }
-               #"triple": {"cos-content": 0}}
-
-    # AVG_MAE = {"quanti": {"cos-content": 0, "cos-features": 0, "adjusted-cosine": 0} }
-               #"triple": {"cos-content": 0}}
-    # AVG_RECALL = {"quanti": {"cos-content": 0, "cos-features": 0, "adjusted-cosine": 0} }
-               #"triple": {"cos-content": 0}}
-    # AVG_PRECISION = {"quanti": {"cos-content": 0, "cos-features": 0, "adjusted-cosine": 0} }
-               #"triple": {"cos-content": 0}}
-
-    # AVG_MAE = {"quanti": {"gower": 0, "cos-content": 0, "gower-features": 0, "cos-features": 0},
-    #            "quali": {"gower": 0}, "both": {"gower": 0}, "triple": {"gower": 0, "cos-content": 0}}
-    # AVG_PRECISION = {"quanti": {"gower": 0, "cos-content": 0, "gower-features": 0, "cos-features": 0},
-    #            "quali": {"gower": 0}, "both": {"gower": 0}, "triple": {"gower": 0, "cos-content": 0}}
-    # AVG_RECALL = {"quanti": {"gower": 0, "cos-content": 0, "gower-features": 0, "cos-features": 0},
-    #            "quali": {"gower": 0}, "both": {"gower": 0}, "triple": {"gower": 0, "cos-content": 0}}
-
-    return AVG_MAE, AVG_RECALL, AVG_PRECISION
 
 def evaluateAverage(Sum, Count):
     try:
@@ -40,14 +11,17 @@ def evaluateAverage(Sum, Count):
         return 0
     return Result
 
+
 def appendColumns(columns):
     columnList = []
     for c in columns:
         columnList.append(c)
     return columnList
 
+
 def isValid(item):
     return (item != 'N/A' and (not (not item))) #Do not contain invalid and is not empty
+
 
 def getValue(function, attribute, conn):
 
@@ -67,6 +41,7 @@ def getValue(function, attribute, conn):
 #         MIN.append(float(getValue('MIN', c, conn)))
 #         MAX.append(float(getValue('MAX', c, conn)))
 
+
 def selectRandomUsers(conn):
     # Must have at least 200 ratings and used tags
     queryUsers = "SELECT u.userid, u.avgrating " \
@@ -75,13 +50,13 @@ def selectRandomUsers(conn):
                  "JOIN movielens_movie m ON m.movielensid = r.movielensid " \
                  "JOIN trailers t ON t.imdbid = m.imdbidtt " \
                  "WHERE t.best_file = 1 " \
-                 "GROUP BY r.userId HAVING COUNT(r.movielensId) BETWEEN 200 AND 500 "
+                 "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200 "
 
     c = conn.cursor()
     c.execute(queryUsers)
-    # all_users = c.fetchall()
-    # Users = random.sample(all_users, int(len(all_users)*0.1)) #Users for this iteration
-    Users = c.fetchall()
+    all_users = c.fetchall()
+    Users = random.sample(all_users, int(len(all_users)*0.1)) #Users for this iteration
+    # Users = c.fetchall()
 
     return Users
 
@@ -134,6 +109,7 @@ def getRandomMovieSet(conn, user):
           "JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid " \
           "JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 " \
           "WHERE EXISTS (SELECT movielensid FROM movielens_rating r WHERE r.movielensid = mm.movielensid) " \
+          "AND CAST(imdbvotes AS NUMERIC) > 200 " \
           "EXCEPT " \
           "SELECT 1, mm.movielensId, m.title, t.id " \
           "FROM movies m " \
@@ -223,8 +199,10 @@ def getUserTrainingTestMovies(conn, user):
           "FROM trailers t " \
           "JOIN movielens_movie m ON m.imdbidtt = t.imdbid " \
           "JOIN movielens_rating r ON r.movielensid = m.movielensid " \
+          "JOIN movies ms ON ms.imdbid = t.imdbid " \
           "WHERE t.best_file = 1 " \
-          "AND r.userid = ? "
+          "AND r.userid = ? " \
+          "AND CAST(ms.imdbvotes AS NUMERIC) > 200 "
     c = conn.cursor()
     c.execute(sql, (user,))
 

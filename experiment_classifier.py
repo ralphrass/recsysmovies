@@ -10,6 +10,9 @@ import itertools as it
 from multiprocessing import Pool
 # low_level_features = load_features('low_level_dict.bin') # normalize
 
+conn = sqlite3.connect('database.db')
+Users = utils.selectRandomUsers(conn)
+
 def extract_features():
     DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
     arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
@@ -145,11 +148,9 @@ def main():
 
 def run(RECOMMENDATION_LIST):
 
-    conn = sqlite3.connect('database.db')
+    global Users, conn
 
     LOW_LEVEL_FEATURES, DEEP_FEATURES, HYBRID_FEATURES = extract_features()
-
-    Users = utils.selectRandomUsers(conn)
 
     print RECOMMENDATION_LIST, "iteration."
 
