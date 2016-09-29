@@ -5,9 +5,7 @@ import utils
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from sklearn import svm
-import sqlite3
-
-# conn = sqlite3.connect('database.db')
+import random
 
 
 AVG_ALL_RATINGS = 3.51611876907599
@@ -80,14 +78,65 @@ def hybrid(movieI, movieJ):
         return 0
 
 
-def recommend(conn, Users, N, featureVector):
-
-    # global DEEP_FEATURES, LOW_LEVEL_FEATURES
+def recommend_random(conn, Users, N):
 
     SumRecall, SumPrecision = 0, 0
 
     for user in Users:
-        print "Training User", user[0], " model..."
+        # print "Training User", user[0], " model..."
+        userMoviesTraining, userMoviesTest = utils.getUserTrainingTestMovies(conn, user[0])
+
+        if len(userMoviesTest) == 0:
+            continue
+
+        hits = 0
+        # For each item rated high by the user
+        for eliteMovie in userMoviesTest:
+            predictions = []
+            # print "Elite Movie", eliteMovie
+            prediction = random.uniform(0.5, 5)
+            predictions.append((eliteMovie[2], eliteMovie[3], prediction))
+
+            randomMovies = utils.getRandomMovieSet(conn, user[0])
+
+            for randomMovie in randomMovies:
+                try:
+                    predictions.append((randomMovie[1], randomMovie[2], random.uniform(0.5, 5)))
+                except KeyError:
+                    continue
+
+            # print sorted(predictions, key=lambda tup: tup[2], reverse=True)
+            predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
+            eliteIndex = predictions_ids.index(eliteMovie[2])
+            if eliteIndex <= N:
+                hits += 1
+
+        # print hits, "hits", "out of", len(userMoviesTest)
+        # exit()
+        recall = hits / float(len(userMoviesTest))
+        SumRecall += recall
+        SumPrecision += (recall / float(N))
+
+    size = len(Users)
+    avgRecall = utils.evaluateAverage(SumRecall, size)
+    avgPrecision = utils.evaluateAverage(SumPrecision, size)
+
+    return avgPrecision, avgRecall
+
+
+def recommend(conn, Users, N, featureVector):
+
+    # global DEEP_FEATURES, LOW_LEVEL_FEATURES
+
+    SumRecall, SumPrecision, SumMAE = 0, 0, 1
+    count = 0
+    # test_list_size = 0
+
+    for user in Users:
+        # print "Training User", user[0], " model..."
+        count += 1
+        if count % 2000 == 0:
+            print "2000 users evaluated"
 
         # select 70% of the users ratings for training
 
@@ -99,6 +148,8 @@ def recommend(conn, Users, N, featureVector):
         if len(userMoviesTest) == 0:
             continue
 
+        # test_list_size += len(userMoviesTest)
+
         userInstances, userValues = utils.getUserInstances(userMoviesTraining, featureVector)
 
         clf = svm.SVR(kernel='rbf')
@@ -109,8 +160,9 @@ def recommend(conn, Users, N, featureVector):
         for eliteMovie in userMoviesTest:
             predictions = []
             # print "Elite Movie", eliteMovie
+            if eliteMovie[0] not in featureVector:
+                continue
 
-            # prediction = predictUserRating(conn, userMovies, eliteMovie, simFunction, userBaseline)
             prediction = clf.predict([featureVector[eliteMovie[0]]])
             predictions.append((eliteMovie[2], eliteMovie[3], prediction))
 
@@ -122,23 +174,28 @@ def recommend(conn, Users, N, featureVector):
                     predictions.append((randomMovie[1], randomMovie[2], prediction))
                 except KeyError:
                     continue
+
             # print sorted(predictions, key=lambda tup: tup[2], reverse=True)
             predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
             eliteIndex = predictions_ids.index(eliteMovie[2])
             if eliteIndex <= N:
                 hits += 1
 
-        # print hits, "hits"
+        # print hits, "hits", "out of", len(userMoviesTest)
         # exit()
+        recall = hits / float(len(userMoviesTest))
+        SumRecall += recall
+        SumPrecision += (recall / float(N))
+        # SumMAE += evaluateMAE(conn, user[0], predictions)
 
-        SumRecall += hits / float(len(userMoviesTest))
-        SumPrecision += SumRecall / float(N)
+    # print "Average test size", (test_list_size / len(Users))
 
     size = len(Users)
     avgRecall = utils.evaluateAverage(SumRecall, size)
     avgPrecision = utils.evaluateAverage(SumPrecision, size)
+    # avgMAE = utils.evaluateAverage(SumMAE, size)
 
-    return avgPrecision, avgRecall
+    return avgPrecision, avgRecall, 1
 
 
 def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline):

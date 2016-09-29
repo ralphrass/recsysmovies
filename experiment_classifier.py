@@ -7,24 +7,27 @@ from opening_feat import load_features
 from sklearn import preprocessing
 import numpy as np
 import itertools as it
-
+from multiprocessing import Pool
 # low_level_features = load_features('low_level_dict.bin') # normalize
 
-
-def main():
-
-    RECOMMENDATION_LIST = 10 #increase at each iteration - important to measure Recall
-    iterations = 1
-    LIST_INCREASE = 5
-
-    conn = sqlite3.connect('database.db')
-
+def extract_features():
     DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
-    LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
+    arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
+    # normalized_ll_features = preprocessing.normalize(arr)
+    # DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), normalized_ll_features)}
 
+    scaler = preprocessing.StandardScaler().fit(arr)
+    std = scaler.transform(arr)
+    DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), std)}
+
+    LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
     arr = np.array([x[1] for x in LOW_LEVEL_FEATURES.iteritems()])
-    normalized_ll_features = preprocessing.normalize(arr)
-    LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), normalized_ll_features)}
+    # normalized_ll_features = preprocessing.normalize(arr)
+    # LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), normalized_ll_features)}
+
+    scaler = preprocessing.StandardScaler().fit(arr)
+    std = scaler.transform(arr)
+    LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), std)}
 
     HYBRID_FEATURES = {}
 
@@ -32,48 +35,160 @@ def main():
         try:
             HYBRID_FEATURES[k] = np.append(DEEP_FEATURES[k], LOW_LEVEL_FEATURES[k])
         except KeyError:
-            HYBRID_FEATURES[k] = DEEP_FEATURES[k]
+            # HYBRID_FEATURES[k] = DEEP_FEATURES[k]
+            continue
 
-    print "Starting Experiment... ", iterations, "iterations.", "recommender list size equal to", RECOMMENDATION_LIST, "."
+    return LOW_LEVEL_FEATURES, DEEP_FEATURES, HYBRID_FEATURES
+
+
+def main():
+
+    # RECOMMENDATION_LIST = 1 #increase at each iteration - important to measure Recall
+    # iterations = 10
+    # LIST_INCREASE = 1
+    #
+    # conn = sqlite3.connect('database.db')
+    #
+    # DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+    # arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
+    # # normalized_ll_features = preprocessing.normalize(arr)
+    # # DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), normalized_ll_features)}
+    #
+    # scaler = preprocessing.StandardScaler().fit(arr)
+    # std = scaler.transform(arr)
+    # DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), std)}
+    #
+    # LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
+    # arr = np.array([x[1] for x in LOW_LEVEL_FEATURES.iteritems()])
+    # # normalized_ll_features = preprocessing.normalize(arr)
+    # # LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), normalized_ll_features)}
+    #
+    # scaler = preprocessing.StandardScaler().fit(arr)
+    # std = scaler.transform(arr)
+    # LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), std)}
+    #
+    # HYBRID_FEATURES = {}
+    #
+    # for k in DEEP_FEATURES.iterkeys():
+    #     try:
+    #         HYBRID_FEATURES[k] = np.append(DEEP_FEATURES[k], LOW_LEVEL_FEATURES[k])
+    #     except KeyError:
+    #         # HYBRID_FEATURES[k] = DEEP_FEATURES[k]
+    #         continue
+
+    # print "Starting Experiment... ", iterations, "iterations.", "recommender list size equal to", RECOMMENDATION_LIST, "."
     avgrecall_lowlevel = 0
     avgprecision_lowlevel = 0
+    avgmae_lowlevel = 0
     avgrecall_deep = 0
     avgprecision_deep = 0
+    avgmae_deep = 0
     avgrecall_hybrid = 0
     avgprecision_hybrid = 0
+    avgmae_hybrid = 0
+    avgrecall_random = 0
+    avgprecision_random = 0
 
-    for i in range(iterations):
+    randomrecall = 0
+    randomprecision = 0
 
-        print i, "iteration."
+    # Users = utils.selectRandomUsers(conn)
 
-        Users = utils.selectRandomUsers(conn)
-        # MoviesToPredict = utils.selectTrainingMovies(conn)
+    p = Pool(5)
+    print(p.map(run, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
 
-        recall, precision = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, LOW_LEVEL_FEATURES)
-        print "Low-Level Recall", recall, "Low-Level Precision", precision
-        avgrecall_lowlevel += recall
-        avgprecision_lowlevel += precision
+    # for i in range(iterations):
+    #
+    #     print i, "iteration."
+    #
+    #     # MoviesToPredict = utils.selectTrainingMovies(conn)
+    #
+    #     precision, recall, mae = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, LOW_LEVEL_FEATURES)
+    #     print "Low-Level Recall", recall, "Low-Level Precision", precision, "Low-Level MAE", mae
+    #     avgrecall_lowlevel += recall
+    #     avgprecision_lowlevel += precision
+    #     # avgmae_lowlevel += mae
+    #
+    #     precision, recall, mae = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, DEEP_FEATURES)
+    #     print "Deep Recall", recall, "Deep Precision", precision, "Deep MAE", mae
+    #     avgrecall_deep += recall
+    #     avgprecision_deep += precision
+    #     # avgmae_deep += mae
+    #
+    #     precision, recall, mae = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, HYBRID_FEATURES)
+    #     print "Hybrid Recall", recall, "Hybrid Precision", precision, "Hybrid MAE", mae
+    #     avgrecall_hybrid += recall
+    #     avgprecision_hybrid += precision
+    #     # avgmae_hybrid += mae
+    #
+    #     precision, recall = recommender_classifier.recommend_random(conn, Users, RECOMMENDATION_LIST)
+    #     print "Random Recall", recall, "Random Precision", precision
+    #     avgrecall_random += recall
+    #     avgprecision_random += precision
+    #
+    #     RECOMMENDATION_LIST += LIST_INCREASE
+    #
+    # print "AVG FULL Low-Level Recall ", (avgrecall_lowlevel / iterations)
+    # print "AVG FULL Low-Level Precision ", (avgprecision_lowlevel / iterations)
+    # # print "AVG FULL Low-Level MAE ", (avgmae_lowlevel / iterations)
+    # print "AVG FULL Deep Recall ", (avgrecall_deep / iterations)
+    # print "AVG FULL Deep Precision", (avgprecision_deep / iterations)
+    # # print "AVG FULL Deep MAE ", (avgmae_deep / iterations)
+    # print "AVG FULL Hybrid Recall ", (avgrecall_hybrid / iterations)
+    # print "AVG FULL Hybrid Precision ", (avgprecision_hybrid / iterations)
+    # # print "AVG FULL Hybrid MAE ", (avgmae_hybrid / iterations)
+    # print "AVG FULL Random Recall ", (avgrecall_random / iterations)
+    # print "AVG FULL Random Precision ", (avgprecision_random / iterations)
 
-        recall, precision = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, DEEP_FEATURES)
-        print "Deep Recall", recall, "Deep Precision", precision
-        avgrecall_deep += recall
-        avgprecision_deep += precision
-        #
-        recall, precision = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, HYBRID_FEATURES)
-        print "Hybrid Recall", recall, "Hybrid Precision", precision
-        avgrecall_hybrid += recall
-        avgprecision_hybrid += precision
+    # conn.close()
 
-        RECOMMENDATION_LIST += LIST_INCREASE
 
-    print "AVG FULL Low-Level Recall ", (avgrecall_lowlevel / iterations)
-    print "AVG FULL Low-Level Precision ", (avgprecision_lowlevel / iterations)
-    print "AVG FULL Deep Recall ", (avgrecall_deep / iterations)
-    print "AVG FULL Deep Precision", (avgprecision_deep / iterations)
-    print "AVG FULL Hybrid Recall ", (avgrecall_hybrid / iterations)
-    print "AVG FULL Hybrid Precision ", (avgprecision_hybrid / iterations)
+def run(RECOMMENDATION_LIST):
 
-    conn.close()
+    conn = sqlite3.connect('database.db')
+
+    LOW_LEVEL_FEATURES, DEEP_FEATURES, HYBRID_FEATURES = extract_features()
+
+    Users = utils.selectRandomUsers(conn)
+
+    print RECOMMENDATION_LIST, "iteration."
+
+    precision, recall, mae = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, LOW_LEVEL_FEATURES)
+    print "Low-Level Recall", recall, "Low-Level Precision", precision, "For iteration with", RECOMMENDATION_LIST
+    avgrecall_lowlevel = recall
+    avgprecision_lowlevel = precision
+    # avgmae_lowlevel += mae
+
+    precision, recall, mae = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, DEEP_FEATURES)
+    print "Deep Recall", recall, "Deep Precision", precision, "For iteration with", RECOMMENDATION_LIST
+    avgrecall_deep = recall
+    avgprecision_deep = precision
+    # avgmae_deep += mae
+
+    precision, recall, mae = recommender_classifier.recommend(conn, Users, RECOMMENDATION_LIST, HYBRID_FEATURES)
+    print "Hybrid Recall", recall, "Hybrid Precision", precision, "For iteration with", RECOMMENDATION_LIST
+    avgrecall_hybrid = recall
+    avgprecision_hybrid = precision
+    # avgmae_hybrid += mae
+
+    precision, recall = recommender_classifier.recommend_random(conn, Users, RECOMMENDATION_LIST)
+    print "Random Recall", recall, "Random Precision",  precision, "For iteration with", RECOMMENDATION_LIST
+    avgrecall_random = recall
+    avgprecision_random = precision
+
+    print "AVG FULL Low-Level Recall ", avgrecall_lowlevel
+    print "AVG FULL Low-Level Precision ", avgprecision_lowlevel
+    # print "AVG FULL Low-Level MAE ", (avgmae_lowlevel / iterations)
+    print "AVG FULL Deep Recall ", avgrecall_deep
+    print "AVG FULL Deep Precision", avgprecision_deep
+    # print "AVG FULL Deep MAE ", (avgmae_deep / iterations)
+    print "AVG FULL Hybrid Recall ", avgrecall_hybrid
+    print "AVG FULL Hybrid Precision ", avgprecision_hybrid
+    # print "AVG FULL Hybrid MAE ", (avgmae_hybrid / iterations)
+    print "AVG FULL Random Recall ", avgrecall_random
+    print "AVG FULL Random Precision ", avgprecision_random
+
+
 
 def writeResults(iterations, LIST_INCREASE, i, UserAverageMAE, RandomMAE, AVG_MAE, AVG_RECALL, AVG_PRECISION, RandomRecall, RandomPrecision, NUM_USERS, LIMIT_ITEMS_TO_PREDICT):
 

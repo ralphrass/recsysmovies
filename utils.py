@@ -34,7 +34,10 @@ def initializeLists():
     return AVG_MAE, AVG_RECALL, AVG_PRECISION
 
 def evaluateAverage(Sum, Count):
-    Result = (Sum / float(Count))
+    try:
+        Result = (Sum / float(Count))
+    except ZeroDivisionError:
+        return 0
     return Result
 
 def appendColumns(columns):
@@ -72,13 +75,13 @@ def selectRandomUsers(conn):
                  "JOIN movielens_movie m ON m.movielensid = r.movielensid " \
                  "JOIN trailers t ON t.imdbid = m.imdbidtt " \
                  "WHERE t.best_file = 1 " \
-                 "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200"
+                 "GROUP BY r.userId HAVING COUNT(r.movielensId) BETWEEN 200 AND 500 "
 
     c = conn.cursor()
     c.execute(queryUsers)
-    all_users = c.fetchall()
-    Users = random.sample(all_users, int(len(all_users)*0.1)) #Users for this iteration
-    # Users = c.fetchall()
+    # all_users = c.fetchall()
+    # Users = random.sample(all_users, int(len(all_users)*0.1)) #Users for this iteration
+    Users = c.fetchall()
 
     return Users
 
@@ -204,9 +207,12 @@ def getUserInstances(userMovies, featureVector):
     all_values = []
 
     for movie in userMovies:
-        features = featureVector[movie[0]]
-        all_features.append(features)
-        all_values.append(movie[1])
+        try:
+            features = featureVector[movie[0]]
+            all_features.append(features)
+            all_values.append(movie[1])
+        except KeyError:
+            continue
 
     return all_features, all_values
 

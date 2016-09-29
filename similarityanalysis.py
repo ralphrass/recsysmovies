@@ -18,8 +18,8 @@ low_level_features = load_features('low_level_dict.bin') # normalize
 arr = np.array([x[1] for x in low_level_features.iteritems()])
 normalized_ll_features = preprocessing.normalize(arr)
 
-print low_level_features[99]
-exit()
+# print low_level_features[99]
+# exit()
 # import itertools as it
 # print list(it.izip(low_level_features.keys(), normalized_ll_features))
 low_level_features = {k: v for k, v in it.izip(low_level_features.keys(), normalized_ll_features)}
@@ -35,14 +35,18 @@ low_level_features = {k: v for k, v in it.izip(low_level_features.keys(), normal
 # print arr[0]
 # print preprocessing.normalize(arr)[0]
 # exit()
+# trailerid = 2216 # Jurassic World
 # trailerid = 5458 # the lord of the rings
-trailerid = 5632 # ToyStory
+# trailerid = 5632 # ToyStory
 # trailerid = 2
-movie = low_level_features[trailerid]
+trailerid = 3341
+# movie = low_level_features[trailerid]
+# movie = features[trailerid]
 
 # movie = features[3412] # Se7en
 # movie = features[5612] #Django Unchained
-# movie = features[4484] # Matrix
+# movie = low_level_features[4484] # Matrix
+movie = features[trailerid]
 
 # print lordoftherings
 similarities_cosine = []
@@ -59,7 +63,7 @@ similarities_cosine = []
 # similarities = {"cosine": [], "pearson": [], "euclidean": []}
 sort_func = lambda x: sorted(x, key=lambda tup: tup[1], reverse=True)
 
-for key, movief in low_level_features.iteritems():
+for key, movief in features.iteritems():
 
     # print np.array(movief)
     # print movie, type(movie)
@@ -149,7 +153,10 @@ topsims_cosine = sorted(similarities_cosine, key=lambda tup: tup[1], reverse=Tru
 # print topsims_ratings[:50]
 
 print "Cosine"
-print topsims_cosine
+# print topsims_cosine
+for key, value in enumerate(topsims_cosine):
+    print key, value
+
 # print "Cosine Hybrid"
 # print topsims_cosine_hybrid[:50]
 # print "Pearson"

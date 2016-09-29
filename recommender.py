@@ -85,10 +85,14 @@ def hybrid(movieI, movieJ):
 
 def recommend(conn, Users, N, simFunction):
 
-    SumRecall, SumPrecision = 0, 0
+    SumRecall, SumPrecision, SumMAE = 0, 0, 0
+    count = 0
 
     for user in Users:
         # print "Testing for User", user[0], "..."
+        count += 1
+        if count % 50 == 0:
+            print "50 users evaluated"
 
         userBaseline = getUserBaseline(conn, user[0])
         userMovies = getUserMovies(conn, user[0])
@@ -109,8 +113,11 @@ def recommend(conn, Users, N, simFunction):
             randomMovies = getRandomMovieSet(conn, user[0])
 
             for randomMovie in randomMovies:
-                prediction = predictUserRating(conn, userMovies, randomMovie, simFunction, userBaseline)
-                predictions.append((randomMovie[1], randomMovie[2], prediction))
+                try:
+                    prediction = predictUserRating(conn, userMovies, randomMovie, simFunction, userBaseline)
+                    predictions.append((randomMovie[1], randomMovie[2], prediction))
+                except KeyError:
+                    continue
 
             predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
             eliteIndex = predictions_ids.index(eliteMovie[1])
@@ -119,14 +126,17 @@ def recommend(conn, Users, N, simFunction):
 
         # print hits, "hits"
 
-        SumRecall += hits / float(len(test))
-        SumPrecision += SumRecall / float(N)
+        recall = hits / float(len(test))
+        SumRecall += recall
+        SumPrecision += (recall / float(N))
+        SumMAE += evaluateMAE(conn, user[0], predictions)
 
     size = len(Users)
     avgRecall = evaluateAverage(SumRecall, size)
     avgPrecision = evaluateAverage(SumPrecision, size)
+    avgMAE = evaluateAverage(SumMAE, size)
 
-    return avgPrecision, avgRecall
+    return avgPrecision, avgRecall, avgMAE
 
 
 def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline):
