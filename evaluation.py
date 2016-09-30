@@ -14,7 +14,7 @@ def evaluateAverageMAE(SumMAE, CountUsers):
 
 
 # predictions is a list of tuples which contains: MovieLensId, MovieTitle, PredictedRating
-def evaluateMAE(conn, user, predictions):
+def evaluateMAE(conn, user, predictions, movielensid_index=0, rating_index=2):
     predictedRatings, realRatings = [], []
 
     query = "SELECT rating FROM movielens_rating WHERE userId = ? AND movielensId = ?"
@@ -24,12 +24,17 @@ def evaluateMAE(conn, user, predictions):
     # will search for intersections
     for prediction in predictions:
         c = conn.cursor()
-        c.execute(query, (user, prediction[0],))
+        c.execute(query, (user, prediction[movielensid_index],))
         result = c.fetchone()
 
         if (type(result) is tuple):
-            predictedRatings.append(prediction[2])
+            predictedRatings.append(prediction[rating_index])
             realRatings.append(float(result[0]))
+
+    # print "Predictions"
+    # print len(predictions)
+    # print "Real Ratings"
+    # print len(realRatings)
 
     if len(predictedRatings) != 0:
         return mean_absolute_error(realRatings, predictedRatings)
