@@ -2,6 +2,9 @@ import io
 import numpy as np
 import random
 import sqlite3
+from opening_feat import load_features
+import itertools as it
+from sklearn import preprocessing
 
 
 def evaluateAverage(Sum, Count):
@@ -51,13 +54,13 @@ def selectRandomUsers(conn):
                  "JOIN movielens_rating r ON r.userId = u.userId " \
                  "JOIN movielens_movie m ON m.movielensid = r.movielensid " \
                  "JOIN trailers t ON t.imdbid = m.imdbidtt " \
-                 "WHERE t.best_file = 1 " \
+                 "WHERE t.best_file = 1 "\
                  "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200 "
 
     c = conn.cursor()
     c.execute(queryUsers)
     all_users = c.fetchall()
-    Users = random.sample(all_users, int(len(all_users)*0.1)) #Users for this iteration
+    Users = random.sample(all_users, int(len(all_users)*0.01)) #Users for this iteration
     # Users = c.fetchall()
 
     return Users
@@ -120,7 +123,7 @@ def getRandomMovieSet(conn, user):
           "WHERE r.userid = ? "
     # "AND CAST(imdbvotes AS NUMERIC) > 200 " \
     # print sql, user
-    limit = 100
+    limit = 500
     c = conn.cursor()
     c.execute(sql, (user,))
     all_movies = c.fetchall()
@@ -216,12 +219,16 @@ def getUserTrainingTestMovies(conn, user):
 
     try:
         training_set = random.sample(all_movies, int(len(all_movies)*0.8))
-        test_set = [x for x in all_movies if x not in training_set and x[1] > 4]
+        full_test_set = [x for x in all_movies if x not in training_set]
+        elite_test_set = []
+        for item in full_test_set:
+            if item[1] > 4:
+                elite_test_set.append(item)
     except:
         print "Error"
         raise
 
-    return training_set, test_set
+    return training_set, elite_test_set, full_test_set
 
 
 def adapt_array(arr):
@@ -237,3 +244,27 @@ def convert_array(text):
     out = io.BytesIO(text)
     out.seek(0)
     return np.load(out)
+
+
+def extract_features():
+    DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+    arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
+    scaler = preprocessing.StandardScaler().fit(arr)
+    std = scaler.transform(arr)
+    DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), std)}
+
+    LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
+    arr = np.array([x[1] for x in LOW_LEVEL_FEATURES.iteritems()])
+    scaler = preprocessing.StandardScaler().fit(arr)
+    std = scaler.transform(arr)
+    LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), std)}
+
+    HYBRID_FEATURES = {}
+
+    for k in DEEP_FEATURES.iterkeys():
+        try:
+            HYBRID_FEATURES[k] = np.append(DEEP_FEATURES[k], LOW_LEVEL_FEATURES[k])
+        except KeyError:
+            continue
+
+    return LOW_LEVEL_FEATURES, DEEP_FEATURES, HYBRID_FEATURES

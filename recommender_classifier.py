@@ -6,7 +6,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from sklearn import svm
 import random
-
+import sqlite3
 
 AVG_ALL_RATINGS = 3.51611876907599
 STD_DEVIATION = 1.098732183
@@ -78,29 +78,30 @@ def hybrid(movieI, movieJ):
         return 0
 
 
-def recommend_random(conn, Users, N):
+def recommend_random(user_datasets, N):
 
     global AVG_ALL_RATINGS, STD_DEVIATION
 
-    SumRecall, SumPrecision = 0, 0
+    conn = sqlite3.connect('database.db')
 
-    for user in Users:
+    SumRecall, SumPrecision, SumMAE = 0, 0, 0
+
+    for user, datasets in user_datasets.iteritems():
         # print "Training User", user[0], " model..."
-        userMoviesTraining, userMoviesTest = utils.getUserTrainingTestMovies(conn, user[0])
 
-        if len(userMoviesTest) == 0:
+        if len(datasets['elite_test']) == 0:
             continue
 
         hits = 0
         # For each item rated high by the user
-        for eliteMovie in userMoviesTest:
+        for eliteMovie in datasets['elite_test']:
             predictions = []
             # print "Elite Movie", eliteMovie
             prediction = random.uniform(0.5, 5)
             # prediction = random.gauss(AVG_ALL_RATINGS, STD_DEVIATION)
             predictions.append((eliteMovie[2], eliteMovie[3], prediction))
 
-            randomMovies = utils.getRandomMovieSet(conn, user[0])
+            randomMovies = utils.getRandomMovieSet(conn, user)
 
             if len(randomMovies) == 0:
                 break
@@ -120,15 +121,17 @@ def recommend_random(conn, Users, N):
 
         # print hits, "hits", "out of", len(userMoviesTest)
         # exit()
-        recall = hits / float(len(userMoviesTest))
+        recall = hits / float(len(datasets['elite_test']))
         SumRecall += recall
         SumPrecision += (recall / float(N))
+        SumMAE += evaluateMAE(conn, user, predictions)
 
-    size = len(Users)
+    size = len(user_datasets)
     avgRecall = utils.evaluateAverage(SumRecall, size)
     avgPrecision = utils.evaluateAverage(SumPrecision, size)
+    avgMae = utils.evaluateAverage(SumMAE, size)
 
-    return avgPrecision, avgRecall
+    return avgPrecision, avgRecall, avgMae
 
 
 def recommend(conn, Users, N, featureVector):
@@ -182,11 +185,7 @@ def recommend(conn, Users, N, featureVector):
                 except KeyError:
                     continue
 
-            # print sorted(predictions, key=lambda tup: tup[2], reverse=True)
-            predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
-            eliteIndex = predictions_ids.index(eliteMovie[2])
-            if eliteIndex <= N:
-                hits += 1
+            hits += count_hit(predictions, eliteMovie[2], N)
 
         # print hits, "hits", "out of", len(userMoviesTest)
         # exit()
@@ -203,6 +202,17 @@ def recommend(conn, Users, N, featureVector):
     # avgMAE = utils.evaluateAverage(SumMAE, size)
 
     return avgPrecision, avgRecall, 1
+
+
+def count_hit(predictions, eliteMovie, N):
+    # print sorted(predictions, key=lambda tup: tup[2], reverse=True)
+    predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
+    eliteIndex = predictions_ids.index(eliteMovie[2])
+    if eliteIndex <= N:
+        return 1
+
+    return 0
+
 
 
 def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline):
@@ -235,3 +245,21 @@ def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline):
 
 # if __name__ == '__main__':
 #     main()
+
+def get_predict(conn, eliteMovie, user, predictor_function, featureVector):
+
+    predictions = []
+
+    prediction = predictor_function([featureVector[eliteMovie[0]]])
+    predictions.append((eliteMovie[2], eliteMovie[3], prediction))
+
+    randomMovies = utils.getRandomMovieSet(conn, user)
+
+    for randomMovie in randomMovies:
+        try:
+            prediction = predictor_function([featureVector[randomMovie[3]]])
+            predictions.append((randomMovie[1], randomMovie[2], prediction))
+        except KeyError:
+            continue
+
+    return predictions

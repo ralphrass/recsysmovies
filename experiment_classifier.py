@@ -23,7 +23,7 @@ def extract_features():
 
     scaler = preprocessing.StandardScaler().fit(arr)
     std = scaler.transform(arr)
-    DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), std)}
+    # DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), std)}
 
     LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
     arr = np.array([x[1] for x in LOW_LEVEL_FEATURES.iteritems()])
@@ -99,7 +99,7 @@ def main():
 
     # Users = utils.selectRandomUsers(conn)
 
-    p = Pool(2)
+    p = Pool(5)
     print(p.map(run, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
     # p = Pool(1)
     # print(p.map(run, [1]))
