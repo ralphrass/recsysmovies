@@ -54,13 +54,14 @@ def selectRandomUsers(conn):
                  "JOIN movielens_rating r ON r.userId = u.userId " \
                  "JOIN movielens_movie m ON m.movielensid = r.movielensid " \
                  "JOIN trailers t ON t.imdbid = m.imdbidtt " \
-                 "WHERE t.best_file = 1 "\
-                 "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200 "
+                 "WHERE t.best_file = 1 LIMIT 20 "
+                 # "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200 " \
+                 # "LIMIT 1 "
 
     c = conn.cursor()
     c.execute(queryUsers)
     all_users = c.fetchall()
-    Users = random.sample(all_users, int(len(all_users)*0.001)) #Users for this iteration
+    Users = random.sample(all_users, int(len(all_users)*1)) #Users for this iteration
     # Users = c.fetchall()
 
     return Users
@@ -109,13 +110,14 @@ def getEliteTestRatingSet(conn, user):
 
 # Randomly select items unrated by the user
 def getRandomMovieSet(conn, user):
-    sql = "SELECT 1, mm.movielensId, m.title, t.id " \
+    # sql = "SELECT 1, mm.movielensId, m.title, t.id " \
+    sql = "SELECT t.id, 1, mm.movielensId, m.title " \
           "FROM movies m " \
           "JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid " \
           "JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 " \
           "WHERE EXISTS (SELECT movielensid FROM movielens_rating r WHERE r.movielensid = mm.movielensid) " \
           "EXCEPT " \
-          "SELECT 1, mm.movielensId, m.title, t.id " \
+          "SELECT t.id, 1, mm.movielensId, m.title " \
           "FROM movies m " \
           "JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid " \
           "JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 " \
@@ -123,7 +125,7 @@ def getRandomMovieSet(conn, user):
           "WHERE r.userid = ? "
     # "AND CAST(imdbvotes AS NUMERIC) > 200 " \
     # print sql, user
-    limit = 500
+    limit = 100
     c = conn.cursor()
     c.execute(sql, (user,))
     all_movies = c.fetchall()
@@ -228,7 +230,7 @@ def getUserTrainingTestMovies(conn, user):
         print "Error"
         raise
 
-    return training_set, elite_test_set, full_test_set
+    return training_set, elite_test_set, full_test_set, all_movies
 
 
 def adapt_array(arr):
@@ -240,6 +242,7 @@ def adapt_array(arr):
     out.seek(0)
     return sqlite3.Binary(out.read())
 
+
 def convert_array(text):
     out = io.BytesIO(text)
     out.seek(0)
@@ -247,7 +250,8 @@ def convert_array(text):
 
 
 def extract_features():
-    DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+    # DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+    DEEP_FEATURES = load_features('bof_128.bin')
     arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
     scaler = preprocessing.StandardScaler().fit(arr)
     std = scaler.transform(arr)

@@ -55,6 +55,17 @@ def deep(movieI, movieJ):
     return cosine_similarity([featuresI], [featuresJ])[0][0]
 
 
+def cosine(movieI, movieJ, feature_vector):
+
+    traileri = movieI[0]
+    trailerj = movieJ[0]
+
+    featuresI = feature_vector[traileri]
+    featuresJ = feature_vector[trailerj]
+
+    return cosine_similarity([featuresI], [featuresJ])[0][0]
+
+
 def hybrid(movieI, movieJ):
 
     global LOW_LEVEL_FEATURES, DEEP_FEATURES
@@ -92,6 +103,8 @@ def recommend_random(user_datasets, N):
         if len(datasets['elite_test']) == 0:
             continue
 
+        random_movies = datasets['random']
+
         hits = 0
         # For each item rated high by the user
         for eliteMovie in datasets['elite_test']:
@@ -101,14 +114,12 @@ def recommend_random(user_datasets, N):
             # prediction = random.gauss(AVG_ALL_RATINGS, STD_DEVIATION)
             predictions.append((eliteMovie[2], eliteMovie[3], prediction))
 
-            randomMovies = utils.getRandomMovieSet(conn, user)
-
-            if len(randomMovies) == 0:
+            if len(random_movies) == 0:
                 break
 
-            for randomMovie in randomMovies:
+            for randomMovie in random_movies:
                 try:
-                    predictions.append((randomMovie[1], randomMovie[2], random.uniform(0.5, 5)))
+                    predictions.append((randomMovie[2], randomMovie[3], random.uniform(0.5, 5)))
                     # predictions.append((randomMovie[1], randomMovie[2],random.gauss(AVG_ALL_RATINGS, STD_DEVIATION)))
                 except KeyError:
                     continue
@@ -119,6 +130,7 @@ def recommend_random(user_datasets, N):
             if eliteIndex <= N:
                 hits += 1
 
+        # print "Predictions for random", predictions
         # print hits, "hits", "out of", len(userMoviesTest)
         # exit()
         recall = hits / float(len(datasets['elite_test']))
@@ -205,9 +217,11 @@ def recommend(conn, Users, N, featureVector):
 
 
 def count_hit(predictions, eliteMovie, N):
-    # print sorted(predictions, key=lambda tup: tup[2], reverse=True)
+    # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
     predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
     eliteIndex = predictions_ids.index(eliteMovie[2])
+    # print "Elite Movie", eliteMovie, "Elite Index", eliteIndex
+    # print "Elite Index", eliteIndex
     if eliteIndex <= N:
         return 1
 
@@ -215,18 +229,15 @@ def count_hit(predictions, eliteMovie, N):
 
 
 
-def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline):
+def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline, feature_vector):
 
     global AVG_ALL_RATINGS
 
     SumSimilarityTimesRating = float(0)
     SumSimilarity = float(0)
     prediction = 0
-    AllSimilarities = [(movieJ, simFunction(movieI, movieJ)) for movieJ in userMovies]
-    topSimilar = sorted(AllSimilarities, key=lambda tup: tup[1], reverse=True)[:30]
 
-    itemBaseline = utils.getItemBaseline(conn, userBaseline, movieI[1])
-    # print userBaseline, itemBaseline
+    itemBaseline = utils.getItemBaseline(conn, userBaseline, movieI[2])  # check this ID index
 
     try:
         baselineUserItem = AVG_ALL_RATINGS + userBaseline + itemBaseline
@@ -234,8 +245,28 @@ def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline):
         print "Type Error", userBaseline, "Movie Id", movieI[1]
         baselineUserItem = AVG_ALL_RATINGS + userBaseline
 
-    for movieJ, sim in topSimilar:
-        SumSimilarityTimesRating += (sim * (float(movieJ[0] - baselineUserItem)))  # similarity * user rating
+    AllSimilarities = [(movieJ, simFunction(movieI, movieJ, feature_vector)) for movieJ in userMovies]
+    # AllSimilarities = [(movieJ, simFunction(movieI, movieJ, feature_vector), (float(movieJ[1] - baselineUserItem))) for movieJ in userMovies]
+    # topSimilar = sorted(AllSimilarities, key=lambda tup: tup[1], reverse=True)[:30]
+
+    # print userBaseline, itemBaseline
+
+    # sims = [simFunction(movieI, movieJ, feature_vector) for movieJ in userMovies]
+    # mult = [(movieJ[1] - baselineUserItem) for movieJ in userMovies]
+
+    # numerator = sum([simFunction(movieI, movieJ, feature_vector) * (movieJ[1] - baselineUserItem) for movieJ in userMovies])
+    # denominator = sum([simFunction(movieI, movieJ, feature_vector) for movieJ in userMovies])
+    #
+    # prediction = (numerator + denominator) + baselineUserItem
+
+    # for movieJ, sim, mult in AllSimilarities:
+    #     SumSimilarityTimesRating += (sim * mult)  # similarity * user rating
+    #     SumSimilarity += abs(sim)
+
+
+
+    for movieJ, sim in AllSimilarities:
+        SumSimilarityTimesRating += (sim * (float(movieJ[1] - baselineUserItem)))  # similarity * user rating
         SumSimilarity += abs(sim)
 
     if (SumSimilarityTimesRating != 0 and SumSimilarity != 0):
@@ -246,14 +277,33 @@ def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline):
 # if __name__ == '__main__':
 #     main()
 
-def get_predict(conn, eliteMovie, user, predictor_function, featureVector):
+
+def get_predict_collaborative_filtering(conn, eliteMovie, randomMovies, allMovies, userBaseline, feature_vector):
+
+    predictions = []
+
+    prediction = predictUserRating(conn, allMovies, eliteMovie, cosine, userBaseline, feature_vector)
+    predictions.append((eliteMovie[2], eliteMovie[3], prediction))
+
+    # print " Elite Movie", eliteMovie, prediction
+    for randomMovie in randomMovies:
+        try:
+            prediction = predictUserRating(conn, allMovies, randomMovie, cosine, userBaseline, feature_vector)
+            predictions.append((randomMovie[2], randomMovie[3], prediction))
+        except KeyError:
+            continue
+
+    return predictions
+
+
+def get_predict(eliteMovie, randomMovies, predictor_function, featureVector):
 
     predictions = []
 
     prediction = predictor_function([featureVector[eliteMovie[0]]])
     predictions.append((eliteMovie[2], eliteMovie[3], prediction))
 
-    randomMovies = utils.getRandomMovieSet(conn, user)
+    print "\nElite Predictions", predictions
 
     for randomMovie in randomMovies:
         try:
@@ -261,5 +311,7 @@ def get_predict(conn, eliteMovie, user, predictor_function, featureVector):
             predictions.append((randomMovie[1], randomMovie[2], prediction))
         except KeyError:
             continue
+
+    # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
 
     return predictions
