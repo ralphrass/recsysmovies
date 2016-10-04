@@ -54,7 +54,7 @@ def selectRandomUsers(conn):
                  "JOIN movielens_rating r ON r.userId = u.userId " \
                  "JOIN movielens_movie m ON m.movielensid = r.movielensid " \
                  "JOIN trailers t ON t.imdbid = m.imdbidtt " \
-                 "WHERE t.best_file = 1 LIMIT 20 "
+                 "WHERE t.best_file = 1 LIMIT 60 "
                  # "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200 " \
                  # "LIMIT 1 "
 
@@ -250,8 +250,8 @@ def convert_array(text):
 
 
 def extract_features():
-    # DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
-    DEEP_FEATURES = load_features('bof_128.bin')
+    DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+    # DEEP_FEATURES = load_features('bof_128.bin')
     arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
     scaler = preprocessing.StandardScaler().fit(arr)
     std = scaler.transform(arr)

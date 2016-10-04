@@ -12,17 +12,40 @@ import itertools as it
 conn = sqlite3.connect('database.db')
 # features = load_features('res_neurons_32_feat_1024_scenes_350.bin') #dictionary
 # features = load_features('res_neurons_places_gru_32_feat_1024_scenes_350.bin')
-features = load_features('resnet_152_lstm_128.dct')
-low_level_features = load_features('low_level_dict.bin') # normalize
+# features = load_features('resnet_152_lstm_128.dct')
+# features = load_features('bof_128.bin')
+# low_level_features = load_features('low_level_dict.bin') # normalize
 
-arr = np.array([x[1] for x in low_level_features.iteritems()])
-normalized_ll_features = preprocessing.normalize(arr)
+DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
+scaler = preprocessing.StandardScaler().fit(arr)
+std = scaler.transform(arr)
+DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), std)}
+
+LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
+arr = np.array([x[1] for x in LOW_LEVEL_FEATURES.iteritems()])
+scaler = preprocessing.StandardScaler().fit(arr)
+std = scaler.transform(arr)
+LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), std)}
+
+features = DEEP_FEATURES
+
+# arr = np.array([x[1] for x in low_level_features.iteritems()])
+# normalized_ll_features = preprocessing.normalize(arr)
 
 # print low_level_features[99]
 # exit()
 # import itertools as it
 # print list(it.izip(low_level_features.keys(), normalized_ll_features))
-low_level_features = {k: v for k, v in it.izip(low_level_features.keys(), normalized_ll_features)}
+# low_level_features = {k: v for k, v in it.izip(low_level_features.keys(), normalized_ll_features)}
+#
+#
+# DEEP_FEATURES = load_features('bof_128.bin')
+# arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
+# scaler = preprocessing.StandardScaler().fit(arr)
+# std = scaler.transform(arr)
+# DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), std)}
+# features = DEEP_FEATURES
 
 # print low_level_features[1]
 # print normalized_ll_features[1]
@@ -37,9 +60,9 @@ low_level_features = {k: v for k, v in it.izip(low_level_features.keys(), normal
 # exit()
 # trailerid = 2216 # Jurassic World
 # trailerid = 5458 # the lord of the rings
-# trailerid = 5632 # ToyStory
+trailerid = 5632 # ToyStory
 # trailerid = 2
-trailerid = 3341
+# trailerid = 3341
 # movie = low_level_features[trailerid]
 # movie = features[trailerid]
 
@@ -51,7 +74,7 @@ movie = features[trailerid]
 # print lordoftherings
 similarities_cosine = []
 # similarities_pearson = []
-# similarities_euclidean = []
+similarities_euclidean = []
 # similarities_minkowski = []
 # similarities_ratings = []
 
@@ -91,23 +114,23 @@ for key, movief in features.iteritems():
     # vI = np.hstack((movie, ratingsI))
     # vJ = np.hstack((movief, ratingsJ))
 
-    # x = np.array(movief)
-    # y = np.array(movie)
+    x = np.array(movief)
+    y = np.array(movie)
 
-    # simr = pearsonr(x, y)
+    simr = pearsonr(x, y)
     # simmink = minkowski(x, y, 3)
 
     # simr_hybrid = pearsonr(vI, vJ)
     # simmink_hybrid = minkowski(vI, vJ, 5)
 
-    # x = x.reshape(1, -1)
-    # y = y.reshape(1, -1)
+    x = x.reshape(1, -1)
+    y = y.reshape(1, -1)
 
     # vI = vI.reshape(1, -1)
     # vJ = vJ.reshape(1, -1)
 
     sim = cosine_similarity([movie], [movief])
-    # sime = euclidean_distances(x, y)
+    sime = euclidean_distances(x, y)
 
     # sim_hybrid = cosine_similarity(vI, vJ)
     # sime_hybrid = euclidean_distances(vI, vJ)
@@ -124,7 +147,7 @@ for key, movief in features.iteritems():
 
         similarities_cosine.append((title[0], sim))
         # similarities_pearson.append((title[0], simr))
-        # similarities_euclidean.append((title[0], sime))
+        similarities_euclidean.append((title[0], sime))
         # similarities_minkowski.append((title[0], simmink))
 
 
@@ -140,7 +163,7 @@ for key, movief in features.iteritems():
 
 topsims_cosine = sorted(similarities_cosine, key=lambda tup: tup[1], reverse=True)
 # topsims_pearson = sorted(similarities_pearson, key=lambda tup: tup[1], reverse=True)
-# topsims_euclidean = sorted(similarities_euclidean, key=lambda tup: tup[1], reverse=False)
+topsims_euclidean = sorted(similarities_euclidean, key=lambda tup: tup[1], reverse=False)
 # topsims_minkowski = sorted(similarities_minkowski, key=lambda tup: tup[1], reverse=False)
 # topsims_ratings = sorted(similarities_ratings, key=lambda tup: tup[1], reverse=True)
 
@@ -154,7 +177,11 @@ topsims_cosine = sorted(similarities_cosine, key=lambda tup: tup[1], reverse=Tru
 
 print "Cosine"
 # print topsims_cosine
-for key, value in enumerate(topsims_cosine):
+for key, value in enumerate(topsims_cosine[:30]):
+    print key, value
+
+print "Euclidean"
+for key, value in enumerate(topsims_euclidean[:30]):
     print key, value
 
 # print "Cosine Hybrid"
