@@ -4,7 +4,7 @@ import utils
 import recommender_classifier
 import time
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from multiprocessing import Process, Manager
 
 # load random users and feature vectors
@@ -89,14 +89,14 @@ def experiment(N, res_ll, res_deep, res_hybrid, res_random, res_deep_bof, res_hy
 
     # start = time.time()
     # DEEP FEATURES - RESNET
-    p_d, r_d = run(user_profiles, N, DEEP_FEATURES_RESNET)
-    res_deep[N] = {'deep_resnet': {'recall': r_d, 'precision': p_d}}
-    print "Deep Resnet Recall", r_d, "Deep Resnet Precision", p_d, "For iteration with", N
-
-    # HYBRID - RESNET
-    p_h, r_h = run(user_profiles, N, HYBRID_FEATURES_RESNET)
-    res_hybrid[N] = {'hybrid_resnet': {'recall': r_h, 'precision': p_h}}
-    print "Hybrid Resnet Recall", r_h, "Hybrid Resnet Precision", p_h, "For iteration with", N
+    # p_d, r_d = run(user_profiles, N, DEEP_FEATURES_RESNET)
+    # res_deep[N] = {'deep_resnet': {'recall': r_d, 'precision': p_d}}
+    # print "Deep Resnet Recall", r_d, "Deep Resnet Precision", p_d, "For iteration with", N
+    #
+    # # HYBRID - RESNET
+    # p_h, r_h = run(user_profiles, N, HYBRID_FEATURES_RESNET)
+    # res_hybrid[N] = {'hybrid_resnet': {'recall': r_h, 'precision': p_h}}
+    # print "Hybrid Resnet Recall", r_h, "Hybrid Resnet Precision", p_h, "For iteration with", N
 
     # DEEP FEATURES - BOF
     p_d, r_d = run(user_profiles, N, DEEP_FEATURES_BOF)
@@ -145,11 +145,18 @@ for proc in jobs:
 
 
 low_level_recall = [item['ll']['recall'] for item in res_ll.values()]
-deep_recall = [item['deep_resnet']['recall'] for item in res_deep.values()]
-hybrid_recall = [item['hybrid_resnet']['recall'] for item in res_hybrid.values()]
+# deep_recall = [item['deep_resnet']['recall'] for item in res_deep.values()]
+# hybrid_recall = [item['hybrid_resnet']['recall'] for item in res_hybrid.values()]
 deep_bof_recall = [item['deep_bof']['recall'] for item in res_deep_bof.values()]
 hybrid_bof_recall = [item['hybrid_bof']['recall'] for item in res_hybrid_bof.values()]
 random_recall = [item['random']['recall'] for item in res_random.values()]
+
+low_level_precision = [item['ll']['precision'] for item in res_ll.values()]
+# deep_precision = [item['deep_resnet']['precision'] for item in res_deep.values()]
+# hybrid_precision = [item['hybrid_resnet']['precision'] for item in res_hybrid.values()]
+deep_bof_precision = [item['deep_bof']['precision'] for item in res_deep_bof.values()]
+hybrid_bof_precision = [item['hybrid_bof']['precision'] for item in res_hybrid_bof.values()]
+random_precision = [item['random']['precision'] for item in res_random.values()]
 
 # print low_level_recall
 # print deep_recall
@@ -158,12 +165,72 @@ random_recall = [item['random']['recall'] for item in res_random.values()]
 # for key, value in low_level_recall.items():
 #      print "Entry", key, value
 
+with open('results.txt', 'a') as resfile:
+    for key, value in res_ll.items():
+        resfile.write(str(key)+" "+str(value)+"\n")
+    # for key, value in res_deep.items():
+    #     resfile.write(str(key) + str(value))
+    # for key, value in res_hybrid.items():
+    #     resfile.write(str(key) + str(value))
+    for key, value in res_deep_bof.items():
+        resfile.write(str(key)+" "+str(value)+"\n")
+    for key, value in res_hybrid_bof.items():
+        resfile.write(str(key)+" "+str(value)+"\n")
+    for key, value in res_random.items():
+        resfile.write(str(key)+" "+str(value)+"\n")
+    # resfile.write(str(res_ll))
+    # resfile.write(str(res_deep))
+    # resfile.write(str(res_hybrid))
+    # resfile.write(str(res_deep_bof))
+    # resfile.write(str(res_hybrid_bof))
+    # resfile.write(str(res_random))
 
-plt.plot(iterations, low_level_recall, 'r-', iterations, deep_recall, 'g-', iterations, hybrid_recall, 'b-', iterations, deep_bof_recall, 'c-', iterations, hybrid_bof_recall, 'k-', iterations, random_recall, 'y-')
-plt.ylabel('Recall')
-plt.xlabel('Iterations')
-plt.show()
-plt.savefig('results.png')
+# All Results Recall
+# plt.figure()
+# lst_recall = [(low_level_recall, 'r-'), (deep_recall, 'g-'), (hybrid_recall, 'b-'), (deep_bof_recall, 'c-'), (hybrid_bof_recall, 'k-'), (random_recall, 'y-')]
+# for a, b in lst_recall:
+#     plt.plot(a, b)
+#
+# xint = iterations
+# plt.xticks(xint)
+#
+# plt.ylabel('Recall')
+# plt.xlabel('Iterations')
+# plt.show()
+# plt.savefig('results_recall.png')
+#
+#
+# # ResNet Only Recall
+# plt.figure()
+# lst_recall = [(low_level_recall, 'r-'), (deep_recall, 'g-'), (hybrid_recall, 'b-'), (random_recall, 'y-')]
+# for a, b in lst_recall:
+#     plt.plot(a, b)
+# plt.ylabel('Recall')
+# plt.xlabel('Iterations')
+# plt.show()
+# plt.savefig('results_recall_resnet_only.png')
+#
+#
+# # BOF Only Recall
+# plt.figure()
+# lst_recall = [(low_level_recall, 'r-'), (deep_bof_recall, 'g-'), (hybrid_bof_recall, 'b-'), (random_recall, 'y-')]
+# for a, b in lst_recall:
+#     plt.plot(a, b)
+# plt.ylabel('Recall')
+# plt.xlabel('Iterations')
+# plt.show()
+# plt.savefig('results_recall_bof_only.png')
+#
+#
+# # All Results Precision
+# plt.figure()
+# lst_precision = [(low_level_precision, 'r-'), (deep_precision, 'g-'), (hybrid_precision, 'b-'), (deep_bof_precision, 'c-'), (hybrid_bof_precision, 'k-'), (random_precision, 'y-')]
+# for a, b in lst_precision:
+#     plt.plot(a, b)
+# plt.ylabel('Precision')
+# plt.xlabel('Iterations')
+# plt.show()
+# plt.savefig('results_precision.png')
 # plt.show()
 
 # fig, ax = plt.subplots()

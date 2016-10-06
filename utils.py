@@ -62,7 +62,7 @@ def selectRandomUsers(conn):
     c.execute(queryUsers)
     all_users = c.fetchall()
     # Users = all_users
-    Users = random.sample(all_users, int(len(all_users)*0.001)) #Users for this iteration
+    Users = random.sample(all_users, int(len(all_users)*0.01)) #Users for this iteration
     # Users = random.sample(all_users, 100)
     # Users = c.fetchall()
 
