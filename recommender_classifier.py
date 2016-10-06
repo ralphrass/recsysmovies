@@ -1,10 +1,9 @@
 # import constants
-from evaluation import evaluateMAE, evaluateUserPrecisionRecall
 # from similarity import computeFeaturesSimilarity
 import utils
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
-from sklearn import svm
+# from sklearn import svm
 import random
 import sqlite3
 
@@ -154,7 +153,7 @@ def recommend_random(user_profiles, N):
             SumPrecision += (recall / float(N))
         except ZeroDivisionError:
             pass
-        SumMAE += evaluateMAE(conn, user[0], predictions)
+        # SumMAE += evaluateMAE(conn, user[0], predictions)
 
     size = len(user_profiles)
     avgRecall = utils.evaluateAverage(SumRecall, size)
@@ -164,74 +163,74 @@ def recommend_random(user_profiles, N):
     return avgPrecision, avgRecall, avgMae
 
 
-def recommend(conn, Users, N, featureVector):
-
-    # global DEEP_FEATURES, LOW_LEVEL_FEATURES
-
-    SumRecall, SumPrecision, SumMAE = 0, 0, 1
-    count = 0
-    # test_list_size = 0
-
-    for user in Users:
-        # print "Training User", user[0], " model..."
-        count += 1
-        if count % 1000 == 0:
-            print "1000 users evaluated"
-
-        # select 70% of the users ratings for training
-
-        # userBaseline = getUserBaseline(conn, user[0])
-        userMoviesTraining, userMoviesTest = utils.getUserTrainingTestMovies(conn, user[0])
-        # userInstances = utils.getUserInstances(userMovies, DEEP_FEATURES)
-        # test = getEliteTestRatingSet(conn, user[0])
-
-        if len(userMoviesTest) == 0:
-            continue
-
-        # test_list_size += len(userMoviesTest)
-
-        userInstances, userValues = utils.getUserInstances(userMoviesTraining, featureVector)
-
-        clf = svm.SVR(kernel='rbf')
-        clf.fit(userInstances, userValues)
-        # print len(userMoviesTest), "items in elite set."
-        hits = 0
-        # For each item rated high by the user
-        for eliteMovie in userMoviesTest:
-            predictions = []
-            # print "Elite Movie", eliteMovie
-            if eliteMovie[0] not in featureVector:
-                continue
-
-            prediction = clf.predict([featureVector[eliteMovie[0]]])
-            predictions.append((eliteMovie[2], eliteMovie[3], prediction))
-
-            randomMovies = utils.getRandomMovieSet(conn, user[0])
-
-            for randomMovie in randomMovies:
-                try:
-                    prediction = clf.predict([featureVector[randomMovie[3]]])
-                    predictions.append((randomMovie[1], randomMovie[2], prediction))
-                except KeyError:
-                    continue
-
-            hits += count_hit(predictions, eliteMovie[2], N)
-
-        # print hits, "hits", "out of", len(userMoviesTest)
-        # exit()
-        recall = hits / float(len(userMoviesTest))
-        SumRecall += recall
-        SumPrecision += (recall / float(N))
-        # SumMAE += evaluateMAE(conn, user[0], predictions)
-
-    # print "Average test size", (test_list_size / len(Users))
-
-    size = len(Users)
-    avgRecall = utils.evaluateAverage(SumRecall, size)
-    avgPrecision = utils.evaluateAverage(SumPrecision, size)
-    # avgMAE = utils.evaluateAverage(SumMAE, size)
-
-    return avgPrecision, avgRecall, 1
+# def recommend(conn, Users, N, featureVector):
+#
+#     # global DEEP_FEATURES, LOW_LEVEL_FEATURES
+#
+#     SumRecall, SumPrecision, SumMAE = 0, 0, 1
+#     count = 0
+#     # test_list_size = 0
+#
+#     for user in Users:
+#         # print "Training User", user[0], " model..."
+#         count += 1
+#         if count % 1000 == 0:
+#             print "1000 users evaluated"
+#
+#         # select 70% of the users ratings for training
+#
+#         # userBaseline = getUserBaseline(conn, user[0])
+#         userMoviesTraining, userMoviesTest = utils.getUserTrainingTestMovies(conn, user[0])
+#         # userInstances = utils.getUserInstances(userMovies, DEEP_FEATURES)
+#         # test = getEliteTestRatingSet(conn, user[0])
+#
+#         if len(userMoviesTest) == 0:
+#             continue
+#
+#         # test_list_size += len(userMoviesTest)
+#
+#         userInstances, userValues = utils.getUserInstances(userMoviesTraining, featureVector)
+#
+#         clf = svm.SVR(kernel='rbf')
+#         clf.fit(userInstances, userValues)
+#         # print len(userMoviesTest), "items in elite set."
+#         hits = 0
+#         # For each item rated high by the user
+#         for eliteMovie in userMoviesTest:
+#             predictions = []
+#             # print "Elite Movie", eliteMovie
+#             if eliteMovie[0] not in featureVector:
+#                 continue
+#
+#             prediction = clf.predict([featureVector[eliteMovie[0]]])
+#             predictions.append((eliteMovie[2], eliteMovie[3], prediction))
+#
+#             randomMovies = utils.getRandomMovieSet(conn, user[0])
+#
+#             for randomMovie in randomMovies:
+#                 try:
+#                     prediction = clf.predict([featureVector[randomMovie[3]]])
+#                     predictions.append((randomMovie[1], randomMovie[2], prediction))
+#                 except KeyError:
+#                     continue
+#
+#             hits += count_hit(predictions, eliteMovie[2], N)
+#
+#         # print hits, "hits", "out of", len(userMoviesTest)
+#         # exit()
+#         recall = hits / float(len(userMoviesTest))
+#         SumRecall += recall
+#         SumPrecision += (recall / float(N))
+#         # SumMAE += evaluateMAE(conn, user[0], predictions)
+#
+#     # print "Average test size", (test_list_size / len(Users))
+#
+#     size = len(Users)
+#     avgRecall = utils.evaluateAverage(SumRecall, size)
+#     avgPrecision = utils.evaluateAverage(SumPrecision, size)
+#     # avgMAE = utils.evaluateAverage(SumMAE, size)
+#
+#     return avgPrecision, avgRecall, 1
 
 
 def count_hit(predictions, eliteMovie, N):

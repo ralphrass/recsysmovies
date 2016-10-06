@@ -119,7 +119,7 @@ def experiment(N, res_ll, res_deep, res_hybrid, res_random, res_deep_bof, res_hy
 #     result = {'ll': {'recall': r_l, 'precision': p_l}, 'deep': {'recall': r_d, 'precision': p_d}, 'random': {'recall': r, 'precision': p}}
 
 
-iterations = range(1, 3)
+iterations = range(1, 6)
 
 # experiment(1)
 manager = Manager()
@@ -159,9 +159,10 @@ random_recall = [item['random']['recall'] for item in res_random.values()]
 #      print "Entry", key, value
 
 
-plt.plot(iterations, low_level_recall, 'r-', iterations, deep_recall, 'g-', iterations, hybrid_recall, 'b-', iterations, random_recall, 'y-')
+plt.plot(iterations, low_level_recall, 'r-', iterations, deep_recall, 'g-', iterations, hybrid_recall, 'b-', iterations, deep_bof_recall, 'c-', iterations, hybrid_bof_recall, 'k-', iterations, random_recall, 'y-')
 plt.ylabel('Recall')
 plt.xlabel('Iterations')
+plt.show()
 plt.savefig('results.png')
 # plt.show()
 
