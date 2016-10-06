@@ -65,6 +65,20 @@ def cosine(movieI, movieJ, feature_vector):
     return cosine_similarity([featuresI], [featuresJ])[0][0]
 
 
+def cosine_tfidf(userid, movielensid, user_feature_vector, movie_feature_vector):
+
+    user_profile = user_feature_vector[userid]
+    movie_profile = movie_feature_vector[movielensid]
+
+    try:
+        cos = cosine_similarity([user_profile], [movie_profile])
+        sim = cos[0][0]
+    except ValueError:
+        print "Value Error on user", userid, "and/or movie", movielensid
+        sim = 0
+    return sim
+
+
 def hybrid(movieI, movieJ):
 
     global LOW_LEVEL_FEATURES, DEEP_FEATURES
@@ -103,29 +117,35 @@ def recommend_random(user_profiles, N):
         if len(datasets['elite_test']) == 0:
             continue
 
+        predictions = []
         # useravg = utils.getUserAverageRating(conn, user[0])
 
         random_movies = datasets['random']
 
         hits = 0
+
+        for movie in random_movies:
+            prediction = random.uniform(0.5, 5)
+            predictions.append((movie[2], movie[3], prediction))
+
         # For each item rated high by the user
         for eliteMovie in datasets['elite_test']:
-            # print "Elite Movie", eliteMovie
-            # prediction = random.uniform(0.5, 5)
+            prediction = random.uniform(0.5, 5)
+            # print "Elite Movie", eliteMovie, prediction
             if len(random_movies) == 0:
                 break
 
-            predictions = [(movie[2], movie[3], random.uniform(0.4, 5.1)) for movie in random_movies]
-            predictions.append((eliteMovie[2], eliteMovie[3], random.uniform(0.4, 5.1)))
+            current_predictions = predictions[:]
+            current_predictions.append((eliteMovie[2], eliteMovie[3], prediction))
 
             # print sorted(predictions, key=lambda tup: tup[2], reverse=True)
-            predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
+            predictions_ids = [x[0] for x in sorted(current_predictions, key=lambda tup: tup[2], reverse=True)]
             eliteIndex = predictions_ids.index(eliteMovie[2])
             # print eliteMovie, eliteIndex
-            if eliteIndex <= N:
+            if eliteIndex < N:
                 hits += 1
 
-        # print "Predictions for random", predictions
+            # print "Predictions for random", sorted(current_predictions, key=lambda t: t[2], reverse=True)
         # print hits, "hits", "out of", len(userMoviesTest)
         # exit()
         recall = hits / float(len(datasets['elite_test']))
@@ -215,79 +235,89 @@ def count_hit(predictions, eliteMovie, N):
     # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
     predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
     eliteIndex = predictions_ids.index(eliteMovie[2])
-    # print "Elite Movie", eliteMovie, "Elite Index", eliteIndex, "Prediction", predictions[eliteIndex][2]
+    # print "Elite Movie", eliteMovie, "Elite Index", eliteIndex
     # print "Elite Index", eliteIndex
-    if eliteIndex <= N:
+    if eliteIndex < N:
         return 1
 
     return 0
 
 
-def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline, feature_vector):
+def predictUserRating(conn, user_profile, movieI, feature_vector, feature_vector2=None):
 
     global AVG_ALL_RATINGS
+
+    all_movies = user_profile['datasets']['all_movies']
+    user_baseline = user_profile['baseline']
 
     numerator, denominator = float(0), float(0)
     prediction = 0
 
-    itemBaseline = utils.getItemBaseline(conn, userBaseline, movieI[2])  # check this ID index
+    itemBaseline = utils.getItemBaseline(conn, user_baseline, movieI[2])  # check this ID index
 
     try:
-        baselineUserItem = AVG_ALL_RATINGS + userBaseline + itemBaseline
+        baselineUserItem = AVG_ALL_RATINGS + user_baseline + itemBaseline
     except TypeError:
-        print "Type Error", userBaseline, "Movie Id", movieI[1]
-        baselineUserItem = AVG_ALL_RATINGS + userBaseline
+        print "Type Error", user_baseline, "Movie Id", movieI[1]
+        baselineUserItem = AVG_ALL_RATINGS + user_baseline
 
-    if feature_vector is None:
-        AllSimilarities = [(movieJ, simFunction(movieI, movieJ, conn)) for movieJ in userMovies]
+    if feature_vector2 is None:
+        AllSimilarities = [(movieJ, cosine(movieI, movieJ, feature_vector)) for movieJ in all_movies]
     else:
-        AllSimilarities = [(movieJ, simFunction(movieI, movieJ, feature_vector)) for movieJ in userMovies]
-    # topSimilar = sorted(AllSimilarities, key=lambda tup: tup[1], reverse=True)[:30]
+        AllSimilarities = [(movieJ, cosine_tfidf(user_profile['userid'], movieJ[2], feature_vector, feature_vector2)) for movieJ in all_movies]
+    # print "Current Movie", movieI
+    # print "Top Similar", sorted(AllSimilarities, key=lambda tup: tup[1], reverse=True)[:30]
 
     for movieJ, sim in AllSimilarities:
-        numerator += (sim * (float(movieJ[1] - baselineUserItem)))  # similarity * user rating
-        denominator += abs(sim)
+        # numerator += (sim * (float(movieJ[1] - baselineUserItem)))  # similarity * user rating
+        if sim > 0:
+            numerator += (sim * (float(movieJ[1])))
+            denominator += abs(sim)
 
     if (numerator != 0 and denominator != 0):
+        # prediction = (numerator / denominator) + baselineUserItem
         prediction = (numerator / denominator) + baselineUserItem
+
+    # print "Numerator", numerator
+    # print "Denominator", denominator
+    # print "Baseline", baselineUserItem
+    # print "Prediction", prediction
 
     return prediction
 
 
-def get_prediction_elite(conn, elite_movie, user_profile, feature_vector):
+def get_prediction_elite(conn, elite_movie, user_profile, feature_vector, feature_vector2=None):
 
-    all_movies = user_profile['datasets']['all_movies']
-    baseline = user_profile['baseline']
+    # if feature_vector is None:
+    #     sim_function = collaborative
+    # else:
+    #     sim_function = cosine
 
-    if feature_vector is None:
-        sim_function = collaborative
-    else:
-        sim_function = cosine
-
-    prediction = predictUserRating(conn, all_movies, elite_movie, sim_function, baseline, feature_vector)
+    prediction = predictUserRating(conn, user_profile, elite_movie, feature_vector, feature_vector2)
+    # print "Elite Prediction", (elite_movie[2], elite_movie[3], prediction)
 
     return (elite_movie[2], elite_movie[3], prediction)
 
 
-def get_predict_collaborative_filtering(conn, user_profile, feature_vector):
+def get_predict_collaborative_filtering(conn, user_profile, feature_vector, feature_vector2=None):
 
-    all_movies = user_profile['datasets']['all_movies']
-    baseline = user_profile['baseline']
-
-    if feature_vector is None:
-        sim_function = collaborative
-    else:
-        sim_function = cosine
+    # if feature_vector is None:
+    #     sim_function = collaborative
+    # else:
+    #     sim_function = cosine
 
     predictions = []
-    # print " Elite Movie", eliteMovie, prediction
+
     for random_movie in user_profile['datasets']['random']:
+        # print "Prediction for ", random_movie
         try:
-            prediction = predictUserRating(conn, all_movies, random_movie, sim_function, baseline, feature_vector)
+            prediction = predictUserRating(conn, user_profile, random_movie, feature_vector, feature_vector2)
             predictions.append((random_movie[2], random_movie[3], prediction))
+            # print prediction
         except KeyError:
             continue
 
+    # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
     return predictions
 
 
@@ -328,7 +358,8 @@ def build_user_profiles(conn, Users):
         random_movies = utils.getRandomMovieSet(conn, user[0])
         user_baseline = utils.getUserBaseline(conn, user[0])
 
-        user_profiles[user[0]] = {'datasets': {'all_movies': all_movies, 'train': userMoviesTraining, 'elite_test': userMoviesTest,
-                                  'test': full_test_set, 'random': random_movies}, 'baseline': user_baseline}
-
+        user_profiles[user[0]] = {'datasets': {'all_movies': all_movies, 'train': userMoviesTraining,
+                                               'elite_test': userMoviesTest,
+                                  'test': full_test_set, 'random': random_movies},
+                                  'baseline': user_baseline, 'userid': user[0]}
     return user_profiles

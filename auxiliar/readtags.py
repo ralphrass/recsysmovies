@@ -3,6 +3,7 @@ import csv
 #import sys
 
 conn = sqlite3.connect('../database.db')
+conn.text_factory = str
 c = conn.cursor()
 movies = 1
 count=0
@@ -19,7 +20,7 @@ with open('tags.csv') as csvfile: #userId,movieId,rating,timestamp
             pass
             # print "tag ", movies, " nao encontrado para o filme ", tag['movieId'], "."
         else:
-            tags.append((tag['movieId'], tag['userId'], buffer(tag['tag'])))
+            tags.append((tag['movieId'], tag['userId'], str(tag['tag'])))
             count += 1
             if count % 1000 == 0:
                 c.executemany('INSERT INTO movielens_tag(movielensID, userId, tag) VALUES (?,?,?)', tags)

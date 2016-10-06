@@ -2,8 +2,20 @@ import sqlite3
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 np.set_printoptions(threshold=np.inf)
+import random
+import opening_feat as of
+
+user_features = of.load_features('../users_tfidf_profile.bin')
+movie_features = of.load_features('../movies_tfidf_profile.bin')
+
+print user_features[121]
+# print movie_features[47]
+
+exit()
 
 conn = sqlite3.connect('../database.db')
+
+# I deleted all the movie tags that were applied less than 50 times
 
 # select users and contrast user-item profiles
 
@@ -62,16 +74,18 @@ def get_user_profile(user):
     sql_tags = "SELECT t.tag, COUNT(*) " \
                "FROM movielens_tag t " \
                "JOIN movielens_rating r ON r.userid = t.userid AND r.movielensid = t.movielensid " \
-               "WHERE t.userid = ? AND r.rating > 3 " \
+               "WHERE t.userid = ? AND r.rating > 4 " \
                "GROUP BY t.tag"
 
     c = conn.cursor()
     c.execute(sql_tags, (user,))
     tags = c.fetchall()
+    training_set = random.sample(tags, int(len(tags) * 0.8))
+    # print tags
 
     user_profile_tfidf = np.zeros(len(all_tags), dtype=np.float)
 
-    for tag in tags:
+    for tag in training_set:
         tf = float(tag[1])
         idf = float(np.log(TOTAL_USERS / getUsersByTag(conn, tag[0])))
         tfidf = float(tf * idf)
@@ -84,7 +98,7 @@ def get_movie_profile(movie):
 
     sql_tags = "SELECT tag, COUNT(*) FROM movielens_tag t " \
                "JOIN movielens_rating r ON r.userid = t.userid AND r.movielensid = t.movielensid " \
-               "WHERE t.movielensid = ? AND r.rating > 3 " \
+               "WHERE t.movielensid = ? AND r.rating > 4 " \
                "GROUP BY tag"
 
     c = conn.cursor()
@@ -104,7 +118,11 @@ def get_movie_profile(movie):
 for user_profile in user_profiles:
 
     user_tfidf = get_user_profile(user_profile[0])
+    if np.sum(user_tfidf) == 0:
+        continue
     userid = user_profile[0]
+
+    print userid
 
     user_recommendations = []
 
@@ -120,14 +138,17 @@ for user_profile in user_profiles:
         sim = cosine_similarity([movie_tfidf], [user_tfidf])
         user_recommendations.append((movie[0], sim))
 
-        print sim
+        # print sim
+    break
 
-
-    users[userid] = user_recommendations
-    exit()
+    # users[userid] = user_recommendations
+    # exit()
 
     # print users
     # exit()
 
-kMostSimilar = sorted(users[userid], key=lambda tup: tup[1], reverse=True)[:30]
+kMostSimilar = sorted(user_recommendations, key=lambda tup: tup[1], reverse=True)[:30]
 print kMostSimilar
+
+# kMostSimilar = sorted(users[userid], key=lambda tup: tup[1], reverse=True)[:30]
+# print kMostSimilar

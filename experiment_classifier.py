@@ -1,4 +1,3 @@
-import sqlite3
 import recommender_classifier
 import evaluation
 import utils
@@ -9,9 +8,111 @@ import numpy as np
 import itertools as it
 from multiprocessing import Pool
 # low_level_features = load_features('low_level_dict.bin') # normalize
+import sqlite3
+import utils
+import recommender_classifier
+import time
+from sklearn import svm
+from sklearn.metrics import mean_absolute_error
+from multiprocessing import Pool
 
+# conn = sqlite3.connect('database.db')
+# Users = utils.selectRandomUsers(conn)
+
+
+def run(user_profiles, N, feature_vector):
+    conn = sqlite3.connect('database.db')
+
+    SumRecall, SumPrecision = 0, 0
+
+    for user, profile in user_profiles.iteritems():
+
+        hits = 0
+
+        predictions = recommender_classifier.get_predict_collaborative_filtering(conn, profile, feature_vector)
+        # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
+
+        for elite_movie in profile['datasets']['elite_test']:
+
+            if feature_vector is list and elite_movie[0] not in feature_vector:
+                continue
+
+            # Predict to the user movie and to random movies that the user did not rated
+            # print predictions
+            elite_prediction = recommender_classifier.get_prediction_elite(conn, elite_movie, profile, feature_vector)
+            all_predictions = predictions[:]
+            all_predictions.append(elite_prediction)
+
+            # print "Elite Movie", elite_movie, elite_prediction
+
+            hits += recommender_classifier.count_hit(all_predictions, elite_movie, N)
+        try:
+            recall = hits / float(len(profile['datasets']['elite_test']))
+            SumRecall += recall
+            SumPrecision += (recall / float(N))
+        except ZeroDivisionError:
+            continue
+            # print "Size is", len(predictions)
+            # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
+
+    size = len(user_profiles)
+    avgRecall = utils.evaluateAverage(SumRecall, size)
+    avgPrecision = utils.evaluateAverage(SumPrecision, size)
+
+    return avgPrecision, avgRecall
+
+
+# def experiment(N, user_profiles_low_level, LOW_LEVEL_FEATURES, user_profiles_deep, DEEP_FEATURES):
+def experiment(N):
+    global user_profiles, LOW_LEVEL_FEATURES, DEEP_FEATURES, HYBRID_FEATURES
+
+    result = {}
+    start = time.time()
+
+    # COLLABORATIVE FILTERING
+    # p_c, r_c = run(user_profiles, N, None)
+    # print "CF Recall", r_c, "CF Precision", p_c, "For iteration with", N, "\n\n"
+    #     result[N] = {'cf': {'recall': r_c, 'precision': p_c}}
+
+    # LOW LEVEL FEATURES check precision, recall and mae
+    p_l, r_l = run(user_profiles, N, LOW_LEVEL_FEATURES)
+    print "Low-Level Recall", r_l, "Low-Level Precision", p_l, "For iteration with", N
+
+    end = time.time()
+    print "Execution time", (end - start)
+    #     result[N] = {'ll': {'recall': r_l, 'precision': p_l}}
+
+    start = time.time()
+    # DEEP FEATURES check precision, recall and mae
+    p_d, r_d = run(user_profiles, N, DEEP_FEATURES)
+    print "Deep Recall", r_d, "Deep Precision", p_d, "For iteration with", N
+    end = time.time()
+    print "Execution time", (end - start)
+    #     result[N] = {'deep': {'recall': r_d, 'precision': p_d}}
+
+    # HYBRID
+    #     p_d, r_d = run(user_profiles_deep, N, HYBRID_FEATURES)
+    #     p_d, r_d = run(user_profiles, N, HYBRID_FEATURES)
+    #     print "Hybrid Recall", r_d, "Hybrid Precision", p_d, "For iteration with", N, "\n\n"
+    #     result[N] = {'hybrid': {'recall': r_d, 'precision': p_d}}
+
+    p, r, mae = recommender_classifier.recommend_random(user_profiles, N)
+    print "Random Recall", r, "Random Precision", p, "Random MAE", mae, "For iteration with", N, "\n\n"
+
+
+# load random users and feature vectors
 conn = sqlite3.connect('database.db')
 Users = utils.selectRandomUsers(conn)
+LOW_LEVEL_FEATURES, DEEP_FEATURES, HYBRID_FEATURES = utils.extract_features()
+
+print len(Users)
+
+user_profiles = recommender_classifier.build_user_profiles(conn, Users)
+
+p = Pool(1)
+print(p.map(experiment, [1]))
+
+
 
 print "Full users dataset contains", len(Users), "users"
 
@@ -210,5 +311,7 @@ def writeResults(iterations, LIST_INCREASE, i, UserAverageMAE, RandomMAE, AVG_MA
         resfile.write(res)
         print res
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
+
+

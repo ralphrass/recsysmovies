@@ -54,14 +54,16 @@ def selectRandomUsers(conn):
                  "JOIN movielens_rating r ON r.userId = u.userId " \
                  "JOIN movielens_movie m ON m.movielensid = r.movielensid " \
                  "JOIN trailers t ON t.imdbid = m.imdbidtt " \
-                 "WHERE t.best_file = 1 LIMIT 60 "
+                 "WHERE t.best_file = 1 "\
                  # "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200 " \
                  # "LIMIT 1 "
 
     c = conn.cursor()
     c.execute(queryUsers)
     all_users = c.fetchall()
-    Users = random.sample(all_users, int(len(all_users)*1)) #Users for this iteration
+    Users = all_users
+    # Users = random.sample(all_users, int(len(all_users)*1)) #Users for this iteration
+    # Users = random.sample(all_users, 100)
     # Users = c.fetchall()
 
     return Users
@@ -125,7 +127,7 @@ def getRandomMovieSet(conn, user):
           "WHERE r.userid = ? "
     # "AND CAST(imdbvotes AS NUMERIC) > 200 " \
     # print sql, user
-    limit = 100
+    limit = 200
     c = conn.cursor()
     c.execute(sql, (user,))
     all_movies = c.fetchall()
@@ -196,7 +198,7 @@ def getUserInstances(userMovies, featureVector):
     for movie in userMovies:
         try:
             features = featureVector[movie[0]]
-            all_features.append(features)
+            all_features.append(list(features))
             all_values.append(movie[1])
         except KeyError:
             continue
@@ -204,7 +206,7 @@ def getUserInstances(userMovies, featureVector):
     return all_features, all_values
 
 
-# Return 70% of the user's rated movies
+# Return a percentage of the user's rated movies
 def getUserTrainingTestMovies(conn, user):
     sql = "SELECT t.id, r.rating, m.movielensid, m.title " \
           "FROM trailers t " \
@@ -250,18 +252,19 @@ def convert_array(text):
 
 
 def extract_features():
-    DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
-    # DEEP_FEATURES = load_features('bof_128.bin')
-    arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
-    scaler = preprocessing.StandardScaler().fit(arr)
-    std = scaler.transform(arr)
-    DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), std)}
 
     LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
     arr = np.array([x[1] for x in LOW_LEVEL_FEATURES.iteritems()])
     scaler = preprocessing.StandardScaler().fit(arr)
     std = scaler.transform(arr)
     LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), std)}
+
+    DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+    # DEEP_FEATURES = load_features('bof_128.bin')
+    arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
+    scaler = preprocessing.StandardScaler().fit(arr)
+    std = scaler.transform(arr)
+    DEEP_FEATURES = {k: v for k, v in it.izip(DEEP_FEATURES.keys(), std)}
 
     HYBRID_FEATURES = {}
 
@@ -272,3 +275,10 @@ def extract_features():
             continue
 
     return LOW_LEVEL_FEATURES, DEEP_FEATURES, HYBRID_FEATURES
+
+
+def extract_tfidf_features():
+    user_features = load_features('users_tfidf_profile.bin')
+    movie_features = load_features('movies_tfidf_profile.bin')
+
+    return user_features, movie_features
