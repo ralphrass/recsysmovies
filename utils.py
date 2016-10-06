@@ -62,7 +62,7 @@ def selectRandomUsers(conn):
     c.execute(queryUsers)
     all_users = c.fetchall()
     # Users = all_users
-    Users = random.sample(all_users, int(len(all_users)*0.001)) #Users for this iteration
+    Users = random.sample(all_users, int(len(all_users)*0.0005)) #Users for this iteration
     # Users = random.sample(all_users, 100)
     # Users = c.fetchall()
 
@@ -127,7 +127,7 @@ def getRandomMovieSet(conn, user):
           "WHERE r.userid = ? "
     # "AND CAST(imdbvotes AS NUMERIC) > 200 " \
     # print sql, user
-    limit = 100
+    limit = 200
     c = conn.cursor()
     c.execute(sql, (user,))
     all_movies = c.fetchall()

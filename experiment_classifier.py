@@ -151,18 +151,19 @@ deep_bof_recall = [item['deep_bof']['recall'] for item in res_deep_bof.values()]
 hybrid_bof_recall = [item['hybrid_bof']['recall'] for item in res_hybrid_bof.values()]
 random_recall = [item['random']['recall'] for item in res_random.values()]
 
-print low_level_recall
-print deep_recall
+# print low_level_recall
+# print deep_recall
 # print low_level_recall
 
-for key, value in low_level_recall.items():
-     print "Entry", key, value
+# for key, value in low_level_recall.items():
+#      print "Entry", key, value
 
 
-plt.plot(iterations, low_level_recall, 'r--', iterations, deep_recall, 'g--', iterations, hybrid_recall, 'b--', iterations, random_recall, 'y--')
+plt.plot(iterations, low_level_recall, 'r-', iterations, deep_recall, 'g-', iterations, hybrid_recall, 'b-', iterations, random_recall, 'y-')
 plt.ylabel('Recall')
 plt.xlabel('Iterations')
-plt.show()
+plt.savefig('results.png')
+# plt.show()
 
 # fig, ax = plt.subplots()
 
