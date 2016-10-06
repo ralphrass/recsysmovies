@@ -150,7 +150,10 @@ def recommend_random(user_profiles, N):
         # exit()
         recall = hits / float(len(datasets['elite_test']))
         SumRecall += recall
-        SumPrecision += (recall / float(N))
+        try:
+            SumPrecision += (recall / float(N))
+        except ZeroDivisionError:
+            pass
         SumMAE += evaluateMAE(conn, user[0], predictions)
 
     size = len(user_profiles)
@@ -248,18 +251,18 @@ def predictUserRating(conn, user_profile, movieI, feature_vector, feature_vector
     global AVG_ALL_RATINGS
 
     all_movies = user_profile['datasets']['all_movies']
-    user_baseline = user_profile['baseline']
+    # user_baseline = user_profile['baseline']
 
     numerator, denominator = float(0), float(0)
     prediction = 0
 
-    itemBaseline = utils.getItemBaseline(conn, user_baseline, movieI[2])  # check this ID index
-
-    try:
-        baselineUserItem = AVG_ALL_RATINGS + user_baseline + itemBaseline
-    except TypeError:
-        print "Type Error", user_baseline, "Movie Id", movieI[1]
-        baselineUserItem = AVG_ALL_RATINGS + user_baseline
+    # itemBaseline = utils.getItemBaseline(conn, user_baseline, movieI[2])  # check this ID index
+    #
+    # try:
+    #     baselineUserItem = AVG_ALL_RATINGS + user_baseline + itemBaseline
+    # except TypeError:
+    #     print "Type Error", user_baseline, "Movie Id", movieI[1]
+    #     baselineUserItem = AVG_ALL_RATINGS + user_baseline
 
     if feature_vector2 is None:
         AllSimilarities = [(movieJ, cosine(movieI, movieJ, feature_vector)) for movieJ in all_movies]
@@ -276,7 +279,7 @@ def predictUserRating(conn, user_profile, movieI, feature_vector, feature_vector
 
     if (numerator != 0 and denominator != 0):
         # prediction = (numerator / denominator) + baselineUserItem
-        prediction = (numerator / denominator) + baselineUserItem
+        prediction = (numerator / denominator)
 
     # print "Numerator", numerator
     # print "Denominator", denominator

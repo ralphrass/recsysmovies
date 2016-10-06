@@ -54,15 +54,15 @@ def selectRandomUsers(conn):
                  "JOIN movielens_rating r ON r.userId = u.userId " \
                  "JOIN movielens_movie m ON m.movielensid = r.movielensid " \
                  "JOIN trailers t ON t.imdbid = m.imdbidtt " \
-                 "WHERE t.best_file = 1 "\
+                 "WHERE t.best_file = 1 "
                  # "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200 " \
                  # "LIMIT 1 "
 
     c = conn.cursor()
     c.execute(queryUsers)
     all_users = c.fetchall()
-    Users = all_users
-    # Users = random.sample(all_users, int(len(all_users)*1)) #Users for this iteration
+    # Users = all_users
+    Users = random.sample(all_users, int(len(all_users)*0.001)) #Users for this iteration
     # Users = random.sample(all_users, 100)
     # Users = c.fetchall()
 
@@ -127,7 +127,7 @@ def getRandomMovieSet(conn, user):
           "WHERE r.userid = ? "
     # "AND CAST(imdbvotes AS NUMERIC) > 200 " \
     # print sql, user
-    limit = 200
+    limit = 100
     c = conn.cursor()
     c.execute(sql, (user,))
     all_movies = c.fetchall()
@@ -251,7 +251,7 @@ def convert_array(text):
     return np.load(out)
 
 
-def extract_features():
+def extract_features(deep_feautures='resnet_152_lstm_128.dct'):
 
     LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
     arr = np.array([x[1] for x in LOW_LEVEL_FEATURES.iteritems()])
@@ -259,7 +259,7 @@ def extract_features():
     std = scaler.transform(arr)
     LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), std)}
 
-    DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+    DEEP_FEATURES = load_features(deep_feautures)
     # DEEP_FEATURES = load_features('bof_128.bin')
     arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
     scaler = preprocessing.StandardScaler().fit(arr)
