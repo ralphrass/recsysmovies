@@ -69,7 +69,8 @@ def run(user_profiles, N, feature_vector, feature_vector2=None):
 
 
 # def experiment(N, user_profiles_low_level, LOW_LEVEL_FEATURES, user_profiles_deep, DEEP_FEATURES):
-def experiment(N, res_ll, res_deep, res_hybrid, res_random, res_deep_bof, res_hybrid_bof):
+# def experiment(N, res_ll, res_deep, res_hybrid, res_random, res_deep_bof, res_hybrid_bof):
+def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
     global user_profiles, LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF
 
     result = {}
@@ -124,15 +125,16 @@ iterations = range(1, 6)
 # experiment(1)
 manager = Manager()
 res_ll = manager.dict()
-res_deep = manager.dict()
-res_hybrid = manager.dict()
+# res_deep = manager.dict()
+# res_hybrid = manager.dict()
 res_deep_bof = manager.dict()
 res_hybrid_bof = manager.dict()
 res_random = manager.dict()
 
 jobs = []
 for num in iterations:
-    p = Process(target=experiment, args=(num,res_ll,res_deep,res_hybrid,res_random,res_deep_bof,res_hybrid_bof))
+    # p = Process(target=experiment, args=(num,res_ll,res_deep,res_hybrid,res_random,res_deep_bof,res_hybrid_bof))
+    p = Process(target=experiment, args=(num, res_ll, res_random, res_deep_bof, res_hybrid_bof))
     jobs.append(p)
     p.start()
 
@@ -144,23 +146,23 @@ for proc in jobs:
 # print(p.map(experiment, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]))
 
 
-low_level_recall = [item['ll']['recall'] for item in res_ll.values()]
-# deep_recall = [item['deep_resnet']['recall'] for item in res_deep.values()]
-# hybrid_recall = [item['hybrid_resnet']['recall'] for item in res_hybrid.values()]
-deep_bof_recall = [item['deep_bof']['recall'] for item in res_deep_bof.values()]
-hybrid_bof_recall = [item['hybrid_bof']['recall'] for item in res_hybrid_bof.values()]
-random_recall = [item['random']['recall'] for item in res_random.values()]
-
-low_level_precision = [item['ll']['precision'] for item in res_ll.values()]
-# deep_precision = [item['deep_resnet']['precision'] for item in res_deep.values()]
-# hybrid_precision = [item['hybrid_resnet']['precision'] for item in res_hybrid.values()]
-deep_bof_precision = [item['deep_bof']['precision'] for item in res_deep_bof.values()]
-hybrid_bof_precision = [item['hybrid_bof']['precision'] for item in res_hybrid_bof.values()]
-random_precision = [item['random']['precision'] for item in res_random.values()]
+# low_level_recall = [item['ll']['recall'] for item in res_ll.values()]
+# # deep_recall = [item['deep_resnet']['recall'] for item in res_deep.values()]
+# # hybrid_recall = [item['hybrid_resnet']['recall'] for item in res_hybrid.values()]
+# deep_bof_recall = [item['deep_bof']['recall'] for item in res_deep_bof.values()]
+# hybrid_bof_recall = [item['hybrid_bof']['recall'] for item in res_hybrid_bof.values()]
+# random_recall = [item['random']['recall'] for item in res_random.values()]
+#
+# low_level_precision = [item['ll']['precision'] for item in res_ll.values()]
+# # deep_precision = [item['deep_resnet']['precision'] for item in res_deep.values()]
+# # hybrid_precision = [item['hybrid_resnet']['precision'] for item in res_hybrid.values()]
+# deep_bof_precision = [item['deep_bof']['precision'] for item in res_deep_bof.values()]
+# hybrid_bof_precision = [item['hybrid_bof']['precision'] for item in res_hybrid_bof.values()]
+# random_precision = [item['random']['precision'] for item in res_random.values()]
 
 # print low_level_recall
 # print deep_recall
-# print low_level_recall
+# print low_level_recall:q
 
 # for key, value in low_level_recall.items():
 #      print "Entry", key, value

@@ -45,8 +45,7 @@ def getValue(function, attribute, conn):
 #         MAX.append(float(getValue('MAX', c, conn)))
 
 
-def selectRandomUsers(conn):
-    # Must have at least 200 ratings and used tags
+def selectRandomUsers(conn, n=0.01):
 
     # queryUsers = "SELECT u.userid, u.avgrating " \
     queryUsers = "SELECT DISTINCT u.userid, u.avgrating " \
@@ -61,10 +60,9 @@ def selectRandomUsers(conn):
     c = conn.cursor()
     c.execute(queryUsers)
     all_users = c.fetchall()
-    # Users = all_users
-    Users = random.sample(all_users, int(len(all_users)*0.01)) #Users for this iteration
-    # Users = random.sample(all_users, 100)
-    # Users = c.fetchall()
+
+    limit = int(len(all_users)*n)
+    Users = random.sample(all_users, limit)
 
     return Users
 
