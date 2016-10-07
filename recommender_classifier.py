@@ -124,12 +124,12 @@ def recommend_random(user_profiles, N):
         hits = 0
 
         for movie in random_movies:
-            prediction = random.uniform(0.5, 7)
+            prediction = random.uniform(0.5, 8)
             predictions.append((movie[2], movie[3], prediction))
 
         # For each item rated high by the user
         for eliteMovie in datasets['elite_test']:
-            prediction = random.uniform(0.5, 7)
+            prediction = random.uniform(0.5, 8)
             # print "Elite Movie", eliteMovie, prediction
             if len(random_movies) == 0:
                 break
