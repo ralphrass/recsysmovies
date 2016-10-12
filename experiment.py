@@ -8,7 +8,8 @@ start = time.time()
 
 # load random users and feature vectors
 conn = sqlite3.connect('database.db')
-Users = utils.selectRandomUsers(conn, 0.005)
+
+Users = utils.selectRandomUsers(conn, 0.0001)
 
 LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET = utils.extract_features()
 foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bin')
@@ -58,8 +59,8 @@ def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
     p_d, r_d = recommender.run(user_profiles, N, DEEP_FEATURES_BOF, 'deep')
     res_deep_bof[N] = {'deep_bof': {'recall': r_d, 'precision': p_d}}
     print "Deep BOF Recall", r_d, "Deep BOF Precision", p_d, "For iteration with", N
-    #
-    # # HYBRID - BOF
+    # #
+    # HYBRID - BOF
     p_h, r_h = recommender.run(user_profiles, N, HYBRID_FEATURES_BOF, 'hybrid')
     res_hybrid_bof[N] = {'hybrid_bof': {'recall': r_h, 'precision': p_h}}
     print "Hybrid BOF Recall", r_h, "Hybrid BOF Precision", p_h, "For iteration with", N
@@ -68,9 +69,9 @@ def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
     res_random[N] = {'random': {'recall': r, 'precision': p}}
     print "Random Recall", r, "Random Precision", p, "For iteration with", N
 
-    p, r = recommender.run(user_profiles, N, None, 'tfidf')
-    res_random[N] = {'random': {'recall': r, 'precision': p}}
-    print "TFIDF Recall", r, "TFIDF Precision", p, "For iteration with", N
+    # p, r = recommender.run(user_profiles, N, None, 'tfidf')
+    # res_random[N] = {'random': {'recall': r, 'precision': p}}
+    # print "TFIDF Recall", r, "TFIDF Precision", p, "For iteration with", N
 
     # return_dict[N] = {'ll': {'recall': r_l, 'precision': p_l}, 'deep': {'recall': r_d, 'precision': p_d}, 'hybrid': {'recall': r_h, 'precision': p_h}, 'random': {'recall': r, 'precision': p}}
     end = time.time()
@@ -88,6 +89,8 @@ res_ll = manager.dict()
 res_deep_bof = manager.dict()
 res_hybrid_bof = manager.dict()
 res_random = manager.dict()
+
+# experiment(10, res_ll, res_random, res_deep_bof, res_hybrid_bof)
 
 jobs = []
 for num in iterations:
