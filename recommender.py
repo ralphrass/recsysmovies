@@ -1,9 +1,13 @@
 import utils
 import random
+import opening_feat as of
 from sklearn.metrics.pairwise import cosine_similarity
 
 _avg_ratings = 3.51611876907599
 _std_deviation = 1.098732183
+
+user_features = of.load_features('users_tfidf_profile.bin')
+movie_features = of.load_features('movies_tfidf_profile.bin')
 
 
 def cosine(movieI, movieJ, feature_vector):
@@ -20,10 +24,20 @@ def cosine(movieI, movieJ, feature_vector):
     return cosine_similarity([featuresI], [featuresJ])
 
 
-def predict_user_rating(all_movies, movieI, feature_vector):
+def tag_cosine_movie(movieid1, movieid2):
+
+    try:
+        movie1_tfidf = movie_features[movieid1]
+        movie2_tfidf = movie_features[movieid2]
+    except KeyError:
+        return 0
+
+    return cosine_similarity([movie1_tfidf], [movie2_tfidf])
+
+
+def predict_user_rating(all_similarities):
 
     numerator, denominator, prediction = float(0), float(0), float(0)
-    all_similarities = [(movieJ, cosine(movieI, movieJ, feature_vector)) for movieJ in all_movies]
 
     for movieJ, sim in all_similarities:
         if sim > 0:
@@ -43,7 +57,26 @@ def get_predictions(random_movies, all_movies, feature_vector):
     for random_movie in random_movies:
         # print "Prediction for ", random_movie
         try:
-            prediction = predict_user_rating(all_movies, random_movie, feature_vector)
+            all_similarities = [(movieJ, cosine(random_movie, movieJ, feature_vector)) for movieJ in all_movies]
+            prediction = predict_user_rating(all_similarities)
+            predictions.append((random_movie[2], random_movie[3], prediction))
+            # print prediction
+        except KeyError:
+            continue
+
+    # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
+    return sorted(predictions, key=lambda tup: tup[2], reverse=True)
+
+
+def get_tag_predictions(random_movies, all_movies):
+
+    predictions = []
+
+    for random_movie in random_movies:
+        # print "Prediction for ", random_movie
+        try:
+            all_similarities = [(movieJ, tag_cosine_movie(movieJ[2], random_movie[2])) for movieJ in all_movies]
+            prediction = predict_user_rating(all_similarities)
             predictions.append((random_movie[2], random_movie[3], prediction))
             # print prediction
         except KeyError:
@@ -116,11 +149,13 @@ def build_user_profiles(conn, Users, feature_vectors):
         predictions_deep = get_predictions(random_movies, all_movies, feature_vectors['deep'])
         predictions_hybrid = get_predictions(random_movies, all_movies, feature_vectors['hybrid'])
         predictions_random = get_random_predictions(random_movies)
+        predictions_tfidf = get_tag_predictions(random_movies, all_movies)
 
         elite_predictions_ll = get_predictions(userMoviesTest, all_movies, feature_vectors['low-level'])
         elite_predictions_deep = get_predictions(userMoviesTest, all_movies, feature_vectors['deep'])
         elite_predictions_hybrid = get_predictions(userMoviesTest, all_movies, feature_vectors['hybrid'])
         elite_predictions_random = get_random_predictions(userMoviesTest)
+        elite_predicitons_tfidf = get_tag_predictions(userMoviesTest, all_movies)
 
         user_profiles[user[0]] = {
                                   # 'datasets': {'all_movies': all_movies, 'train': userMoviesTraining,
@@ -128,9 +163,11 @@ def build_user_profiles(conn, Users, feature_vectors):
                                   # 'test': full_test_set, 'random': random_movies},
                                   'userid': user[0],
                                   'predictions': {'low-level': predictions_low_level, 'deep': predictions_deep,
-                                                  'hybrid': predictions_hybrid, 'random': predictions_random},
+                                                  'hybrid': predictions_hybrid, 'random': predictions_random,
+                                                  'tfidf': predictions_tfidf},
                                   'elite_predictions': {'low-level': elite_predictions_ll,
                                                         'deep': elite_predictions_deep,
                                                         'hybrid': elite_predictions_hybrid,
-                                                        'random': elite_predictions_random}}
+                                                        'random': elite_predictions_random,
+                                                        'tfidf': elite_predicitons_tfidf}}
     return user_profiles

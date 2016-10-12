@@ -28,7 +28,7 @@ scaler = preprocessing.StandardScaler().fit(arr)
 std = scaler.transform(arr)
 LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), std)}
 
-features = LOW_LEVEL_FEATURES
+features = DEEP_FEATURES
 
 # arr = np.array([x[1] for x in low_level_features.iteritems()])
 # normalized_ll_features = preprocessing.normalize(arr)

@@ -8,7 +8,8 @@ start = time.time()
 
 # load random users and feature vectors
 conn = sqlite3.connect('database.db')
-Users = utils.selectRandomUsers(conn, 1)
+Users = utils.selectRandomUsers(conn, 0.005)
+
 LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET = utils.extract_features()
 foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bin')
 # USER_TFIDF_FEATURES, MOVIE_TFIDF_FEATURES = utils.extract_tfidf_features()
@@ -20,6 +21,7 @@ feature_vectors = {'low-level': LOW_LEVEL_FEATURES, 'deep': DEEP_FEATURES_BOF, '
 user_profiles = recommender.build_user_profiles(conn, Users, feature_vectors)
 
 # print user_profiles
+# exit()
 
 
 def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
@@ -65,6 +67,10 @@ def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
     p, r = recommender.run(user_profiles, N, None, 'random')
     res_random[N] = {'random': {'recall': r, 'precision': p}}
     print "Random Recall", r, "Random Precision", p, "For iteration with", N
+
+    p, r = recommender.run(user_profiles, N, None, 'tfidf')
+    res_random[N] = {'random': {'recall': r, 'precision': p}}
+    print "TFIDF Recall", r, "TFIDF Precision", p, "For iteration with", N
 
     # return_dict[N] = {'ll': {'recall': r_l, 'precision': p_l}, 'deep': {'recall': r_d, 'precision': p_d}, 'hybrid': {'recall': r_h, 'precision': p_h}, 'random': {'recall': r, 'precision': p}}
     end = time.time()
