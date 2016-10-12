@@ -16,7 +16,7 @@ conn = sqlite3.connect('database.db')
 # features = load_features('bof_128.bin')
 # low_level_features = load_features('low_level_dict.bin') # normalize
 
-DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
+DEEP_FEATURES = load_features('bof_128.bin')
 arr = np.array([x[1] for x in DEEP_FEATURES.iteritems()])
 scaler = preprocessing.StandardScaler().fit(arr)
 std = scaler.transform(arr)
@@ -28,7 +28,7 @@ scaler = preprocessing.StandardScaler().fit(arr)
 std = scaler.transform(arr)
 LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), std)}
 
-features = DEEP_FEATURES
+features = LOW_LEVEL_FEATURES
 
 # arr = np.array([x[1] for x in low_level_features.iteritems()])
 # normalized_ll_features = preprocessing.normalize(arr)
@@ -60,7 +60,8 @@ features = DEEP_FEATURES
 # exit()
 # trailerid = 2216 # Jurassic World
 # trailerid = 5458 # the lord of the rings
-trailerid = 5632 # ToyStory
+trailerid = 4484 # Matrix
+# trailerid = 5632 # ToyStory
 # trailerid = 2
 # trailerid = 3341
 # movie = low_level_features[trailerid]
@@ -177,12 +178,12 @@ topsims_euclidean = sorted(similarities_euclidean, key=lambda tup: tup[1], rever
 
 print "Cosine"
 # print topsims_cosine
-for key, value in enumerate(topsims_cosine[:30]):
+for key, value in enumerate(topsims_cosine):
     print key, value
 
-print "Euclidean"
-for key, value in enumerate(topsims_euclidean[:30]):
-    print key, value
+# print "Euclidean"
+# for key, value in enumerate(topsims_euclidean[:30]):
+#     print key, value
 
 # print "Cosine Hybrid"
 # print topsims_cosine_hybrid[:50]

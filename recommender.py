@@ -1,171 +1,136 @@
-# import constants
-from evaluation import evaluateMAE, evaluateUserPrecisionRecall
-# from similarity import computeFeaturesSimilarity
-from utils import evaluateAverage, getUserMovies, getEliteTestRatingSet, \
-    getRandomMovieSet, getUserBaseline, getItemBaseline, getMovieRatings1, getMovieRatings2
+import utils
+import random
 from sklearn.metrics.pairwise import cosine_similarity
-from opening_feat import load_features
-import numpy as np
-import sqlite3
 
-# conn = sqlite3.connect('database.db')
-
-DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
-LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
-
-AVG_ALL_RATINGS = 3.51611876907599
+_avg_ratings = 3.51611876907599
+_std_deviation = 1.098732183
 
 
-# def collaborative(movieI, movieJ):
-#
-#     global conn
-#
-#     # select all the ratings of movie I from users that also rated movie J
-#     ratingsI = np.array([x[0] for x in getMovieRatings1(conn, movieI[1], movieJ[1])])
-#     ratingsJ = np.array([x[0] for x in getMovieRatings2(conn, movieI[1], movieJ[1])])
-#
-#     if len(ratingsI) > 0 and len(ratingsJ) > 0:
-#         return cosine_similarity([ratingsI], [ratingsJ])
-#     return 0
+def cosine(movieI, movieJ, feature_vector):
 
-
-def lowlevel(movieI, movieJ):
-
-    global LOW_LEVEL_FEATURES
-
-    traileri = movieI[3]
-    trailerj = movieJ[3]
+    traileri = movieI[0]
+    trailerj = movieJ[0]
 
     try:
-        featuresI = LOW_LEVEL_FEATURES[traileri]
-        featuresJ = LOW_LEVEL_FEATURES[trailerj]
+        featuresI = feature_vector[traileri]
+        featuresJ = feature_vector[trailerj]
     except KeyError:
         return 0
 
-    cos = cosine_similarity([featuresI], [featuresJ])
-
-    return cos[0][0]
+    return cosine_similarity([featuresI], [featuresJ])
 
 
-def deep(movieI, movieJ):
+def predict_user_rating(all_movies, movieI, feature_vector):
 
-    global DEEP_FEATURES
+    numerator, denominator, prediction = float(0), float(0), float(0)
+    all_similarities = [(movieJ, cosine(movieI, movieJ, feature_vector)) for movieJ in all_movies]
 
-    traileri = movieI[3]
-    trailerj = movieJ[3]
+    for movieJ, sim in all_similarities:
+        if sim > 0:
+            numerator += (float(sim) * (float(movieJ[1])))
+            denominator += abs(float(sim))
 
-    featuresI = DEEP_FEATURES[traileri]
-    featuresJ = DEEP_FEATURES[trailerj]
-
-    return cosine_similarity([featuresI], [featuresJ])[0][0]
-
-
-def hybrid(movieI, movieJ):
-
-    global LOW_LEVEL_FEATURES, DEEP_FEATURES
-
-    traileri = movieI[3]
-    trailerj = movieJ[3]
-
-    try:
-        featuresI = LOW_LEVEL_FEATURES[traileri]
-        featuresJ = LOW_LEVEL_FEATURES[trailerj]
-        featuresDeepI = DEEP_FEATURES[traileri]
-        featuresDeepJ = DEEP_FEATURES[trailerj]
-
-        vI = np.hstack((featuresI, featuresDeepI))
-        vJ = np.hstack((featuresJ, featuresDeepJ))
-
-        cos = cosine_similarity([vI], [vJ])
-
-        return cos
-    except KeyError:
-        return 0
-
-
-def recommend(conn, Users, N, simFunction):
-
-    SumRecall, SumPrecision, SumMAE = 0, 0, 0
-    count = 0
-
-    for user in Users:
-        # print "Testing for User", user[0], "..."
-        count += 1
-        if count % 50 == 0:
-            print "50 users evaluated"
-
-        userBaseline = getUserBaseline(conn, user[0])
-        userMovies = getUserMovies(conn, user[0])
-        test = getEliteTestRatingSet(conn, user[0])
-
-        if len(test) == 0:
-            continue
-
-        # print len(test), "items in elite set."
-        hits = 0
-        # For each item rated high by the user
-        for eliteMovie in test:
-            predictions = []
-
-            prediction = predictUserRating(conn, userMovies, eliteMovie, simFunction, userBaseline)
-            predictions.append((eliteMovie[1], eliteMovie[2], prediction))
-
-            randomMovies = getRandomMovieSet(conn, user[0])
-
-            for randomMovie in randomMovies:
-                try:
-                    prediction = predictUserRating(conn, userMovies, randomMovie, simFunction, userBaseline)
-                    predictions.append((randomMovie[1], randomMovie[2], prediction))
-                except KeyError:
-                    continue
-
-            predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
-            eliteIndex = predictions_ids.index(eliteMovie[1])
-            if eliteIndex <= N:
-                hits += 1
-
-        # print hits, "hits"
-
-        recall = hits / float(len(test))
-        SumRecall += recall
-        SumPrecision += (recall / float(N))
-        SumMAE += evaluateMAE(conn, user[0], predictions)
-
-    size = len(Users)
-    avgRecall = evaluateAverage(SumRecall, size)
-    avgPrecision = evaluateAverage(SumPrecision, size)
-    avgMAE = evaluateAverage(SumMAE, size)
-
-    return avgPrecision, avgRecall, avgMAE
-
-
-def predictUserRating(conn, userMovies, movieI, simFunction, userBaseline):
-
-    global AVG_ALL_RATINGS
-
-    SumSimilarityTimesRating = float(0)
-    SumSimilarity = float(0)
-    prediction = 0
-    AllSimilarities = [(movieJ, simFunction(movieI, movieJ)) for movieJ in userMovies]
-    topSimilar = sorted(AllSimilarities, key=lambda tup: tup[1], reverse=True)[:30]
-
-    itemBaseline = getItemBaseline(conn, userBaseline, movieI[1])
-    # print userBaseline, itemBaseline
-
-    try:
-        baselineUserItem = AVG_ALL_RATINGS + userBaseline + itemBaseline
-    except TypeError:
-        print "Type Error", userBaseline, "Movie Id", movieI[1]
-        baselineUserItem = AVG_ALL_RATINGS + userBaseline
-
-    for movieJ, sim in topSimilar:
-        SumSimilarityTimesRating += (sim * (float(movieJ[0] - baselineUserItem)))  # similarity * user rating
-        SumSimilarity += abs(sim)
-
-    if (SumSimilarityTimesRating != 0 and SumSimilarity != 0):
-        prediction = (SumSimilarityTimesRating / SumSimilarity) + baselineUserItem
+    if numerator != 0 and denominator != 0:
+        prediction = float(numerator / float(denominator))
 
     return prediction
 
-# if __name__ == '__main__':
-#     main()
+
+def get_predictions(random_movies, all_movies, feature_vector):
+
+    predictions = []
+
+    for random_movie in random_movies:
+        # print "Prediction for ", random_movie
+        try:
+            prediction = predict_user_rating(all_movies, random_movie, feature_vector)
+            predictions.append((random_movie[2], random_movie[3], prediction))
+            # print prediction
+        except KeyError:
+            continue
+
+    # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
+    return sorted(predictions, key=lambda tup: tup[2], reverse=True)
+
+
+def get_random_predictions(movies):
+
+    global _avg_ratings, _std_deviation
+
+    predictions = [(movie[2], movie[3], random.gauss(_avg_ratings, _std_deviation)) for movie in movies]
+
+    return sorted(predictions, key=lambda tup: tup[2], reverse=True)
+
+
+def run(user_profiles, N, feature_vector, feature_vector_name):
+
+    sum_recall, sum_precision = 0, 0
+
+    for user, profile in user_profiles.iteritems():
+
+        hits = 0
+
+        for elite_movie in profile['elite_predictions'][feature_vector_name]:
+
+            if feature_vector is list and elite_movie[0] not in feature_vector:
+                continue
+
+            hits += count_hit(profile['predictions'][feature_vector_name], elite_movie, N)
+
+        if hits > 0:
+            recall = hits / float(len(profile['elite_predictions'][feature_vector_name]))
+            sum_recall += recall
+            sum_precision += (recall / float(N))
+
+    size = len(user_profiles)
+    avgRecall = utils.evaluateAverage(sum_recall, size)
+    avgPrecision = utils.evaluateAverage(sum_precision, size)
+
+    return avgPrecision, avgRecall
+
+
+def count_hit(predictions, elite_movie, n):
+
+    for prediction in predictions:
+        if elite_movie[2] > prediction[2]:
+            index = predictions.index(prediction)
+            return int(index < n)
+
+    return 0
+
+
+def build_user_profiles(conn, Users, feature_vectors):
+
+    user_profiles, predictions = {}, {}
+
+    for user in Users:
+
+        userMoviesTraining, userMoviesTest, full_test_set, all_movies = utils.getUserTrainingTestMovies(conn, user[0])
+
+        if len(userMoviesTest) == 0:
+            continue
+
+        random_movies = utils.getRandomMovieSet(conn, user[0])
+
+        predictions_low_level = get_predictions(random_movies, all_movies, feature_vectors['low-level'])
+        predictions_deep = get_predictions(random_movies, all_movies, feature_vectors['deep'])
+        predictions_hybrid = get_predictions(random_movies, all_movies, feature_vectors['hybrid'])
+        predictions_random = get_random_predictions(random_movies)
+
+        elite_predictions_ll = get_predictions(userMoviesTest, all_movies, feature_vectors['low-level'])
+        elite_predictions_deep = get_predictions(userMoviesTest, all_movies, feature_vectors['deep'])
+        elite_predictions_hybrid = get_predictions(userMoviesTest, all_movies, feature_vectors['hybrid'])
+        elite_predictions_random = get_random_predictions(userMoviesTest)
+
+        user_profiles[user[0]] = {
+                                  # 'datasets': {'all_movies': all_movies, 'train': userMoviesTraining,
+                                  #              'elite_test': userMoviesTest,
+                                  # 'test': full_test_set, 'random': random_movies},
+                                  'userid': user[0],
+                                  'predictions': {'low-level': predictions_low_level, 'deep': predictions_deep,
+                                                  'hybrid': predictions_hybrid, 'random': predictions_random},
+                                  'elite_predictions': {'low-level': elite_predictions_ll,
+                                                        'deep': elite_predictions_deep,
+                                                        'hybrid': elite_predictions_hybrid,
+                                                        'random': elite_predictions_random}}
+    return user_profiles

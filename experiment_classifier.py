@@ -9,7 +9,7 @@ from multiprocessing import Process, Manager
 
 # load random users and feature vectors
 conn = sqlite3.connect('database.db')
-Users = utils.selectRandomUsers(conn)
+Users = utils.selectRandomUsers(conn, 0.001)
 LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET = utils.extract_features()
 foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bin')
 # USER_TFIDF_FEATURES, MOVIE_TFIDF_FEATURES = utils.extract_tfidf_features()
@@ -17,6 +17,17 @@ foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bi
 print len(Users)
 
 user_profiles = recommender_classifier.build_user_profiles(conn, Users)
+
+
+def cosine(movieI, movieJ, feature_vector):
+
+    traileri = movieI[0]
+    trailerj = movieJ[0]
+
+    featuresI = feature_vector[traileri]
+    featuresJ = feature_vector[trailerj]
+
+    return cosine_similarity([featuresI], [featuresJ])
 
 
 def run(user_profiles, N, feature_vector, feature_vector2=None):
@@ -90,21 +101,22 @@ def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
 
     # start = time.time()
     # DEEP FEATURES - RESNET
-    # p_d, r_d = run(user_profiles, N, DEEP_FEATURES_RESNET)
+    p_d, r_d = run(user_profiles, N, DEEP_FEATURES_RESNET)
     # res_deep[N] = {'deep_resnet': {'recall': r_d, 'precision': p_d}}
-    # print "Deep Resnet Recall", r_d, "Deep Resnet Precision", p_d, "For iteration with", N
+    print "Deep Resnet Recall", r_d, "Deep Resnet Precision", p_d, "For iteration with", N
     #
     # # HYBRID - RESNET
-    # p_h, r_h = run(user_profiles, N, HYBRID_FEATURES_RESNET)
+    p_h, r_h = run(user_profiles, N, HYBRID_FEATURES_RESNET)
     # res_hybrid[N] = {'hybrid_resnet': {'recall': r_h, 'precision': p_h}}
-    # print "Hybrid Resnet Recall", r_h, "Hybrid Resnet Precision", p_h, "For iteration with", N
+    print "Hybrid Resnet Recall", r_h, "Hybrid Resnet Precision", p_h, "For iteration with", N
+
 
     # DEEP FEATURES - BOF
     p_d, r_d = run(user_profiles, N, DEEP_FEATURES_BOF)
     res_deep_bof[N] = {'deep_bof': {'recall': r_d, 'precision': p_d}}
     print "Deep BOF Recall", r_d, "Deep BOF Precision", p_d, "For iteration with", N
-
-    # HYBRID - BOF
+    #
+    # # HYBRID - BOF
     p_h, r_h = run(user_profiles, N, HYBRID_FEATURES_BOF)
     res_hybrid_bof[N] = {'hybrid_bof': {'recall': r_h, 'precision': p_h}}
     print "Hybrid BOF Recall", r_h, "Hybrid BOF Precision", p_h, "For iteration with", N
@@ -120,7 +132,7 @@ def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
 #     result = {'ll': {'recall': r_l, 'precision': p_l}, 'deep': {'recall': r_d, 'precision': p_d}, 'random': {'recall': r, 'precision': p}}
 
 
-iterations = range(1, 6)
+iterations = range(10, 11)
 
 # experiment(1)
 manager = Manager()
@@ -167,7 +179,7 @@ for proc in jobs:
 # for key, value in low_level_recall.items():
 #      print "Entry", key, value
 
-with open('results.txt', 'a') as resfile:
+with open('results_random.txt', 'a') as resfile:
     for key, value in res_ll.items():
         resfile.write(str(key)+" "+str(value)+"\n")
     # for key, value in res_deep.items():
@@ -186,68 +198,3 @@ with open('results.txt', 'a') as resfile:
     # resfile.write(str(res_deep_bof))
     # resfile.write(str(res_hybrid_bof))
     # resfile.write(str(res_random))
-
-# All Results Recall
-# plt.figure()
-# lst_recall = [(low_level_recall, 'r-'), (deep_recall, 'g-'), (hybrid_recall, 'b-'), (deep_bof_recall, 'c-'), (hybrid_bof_recall, 'k-'), (random_recall, 'y-')]
-# for a, b in lst_recall:
-#     plt.plot(a, b)
-#
-# xint = iterations
-# plt.xticks(xint)
-#
-# plt.ylabel('Recall')
-# plt.xlabel('Iterations')
-# plt.show()
-# plt.savefig('results_recall.png')
-#
-#
-# # ResNet Only Recall
-# plt.figure()
-# lst_recall = [(low_level_recall, 'r-'), (deep_recall, 'g-'), (hybrid_recall, 'b-'), (random_recall, 'y-')]
-# for a, b in lst_recall:
-#     plt.plot(a, b)
-# plt.ylabel('Recall')
-# plt.xlabel('Iterations')
-# plt.show()
-# plt.savefig('results_recall_resnet_only.png')
-#
-#
-# # BOF Only Recall
-# plt.figure()
-# lst_recall = [(low_level_recall, 'r-'), (deep_bof_recall, 'g-'), (hybrid_bof_recall, 'b-'), (random_recall, 'y-')]
-# for a, b in lst_recall:
-#     plt.plot(a, b)
-# plt.ylabel('Recall')
-# plt.xlabel('Iterations')
-# plt.show()
-# plt.savefig('results_recall_bof_only.png')
-#
-#
-# # All Results Precision
-# plt.figure()
-# lst_precision = [(low_level_precision, 'r-'), (deep_precision, 'g-'), (hybrid_precision, 'b-'), (deep_bof_precision, 'c-'), (hybrid_bof_precision, 'k-'), (random_precision, 'y-')]
-# for a, b in lst_precision:
-#     plt.plot(a, b)
-# plt.ylabel('Precision')
-# plt.xlabel('Iterations')
-# plt.show()
-# plt.savefig('results_precision.png')
-# plt.show()
-
-# fig, ax = plt.subplots()
-
-# # Be sure to only pick integer tick locations.
-# for axis in [ax.xaxis, ax.yaxis]:
-#     axis.set_major_locator(ticker.MaxNLocator(integer=True))
-
-# # Plot anything (note the non-integer min-max values)...
-# x = np.linspace(-0.1, np.pi, 100)
-# ax.plot(range(1,6), low_level_recall, 'r--', range(1,6), deep_recall, 'g--', range(1,6), hybrid_recall, 'b--', range(1,6), random_recall, 'y--')
-
-# # Just for appearance's sake
-# ax.margins(0.05)
-# ax.axis('tight')
-# fig.tight_layout()
-
-# plt.show()

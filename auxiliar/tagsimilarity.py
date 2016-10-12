@@ -4,14 +4,22 @@ from sklearn.metrics.pairwise import cosine_similarity
 np.set_printoptions(threshold=np.inf)
 import random
 import opening_feat as of
+import time
+
+start = time.time()
 
 user_features = of.load_features('../users_tfidf_profile.bin')
 movie_features = of.load_features('../movies_tfidf_profile.bin')
 
-print user_features[121]
+end = time.time()
+
+print "Profiles loaded in", start - end, "seconds"
+
+# print user_features[121]
 # print movie_features[47]
 
-exit()
+# exit()
+start = time.time()
 
 conn = sqlite3.connect('../database.db')
 
@@ -38,19 +46,19 @@ c.execute(sql_user)
 # user_profiles = [(x[0], np.array(x[1])) for x in c.fetchall()]
 user_profiles = c.fetchall()
 
-print len(user_profiles)
+print len(user_profiles), "user profiles"
 
 c = conn.cursor()
 c.execute(sql_movies)
 # movie_profiles = [(x[0], np.array(x[1])) for x in c.fetchall()]
 movie_profiles = c.fetchall()
 
-print len(movie_profiles)
+print len(movie_profiles), "movie profiles"
 
 users = {}
 
-TOTAL_USERS = float(4897)
-TOTAL_MOVIES = float(2903)
+TOTAL_USERS = float(3998)
+TOTAL_MOVIES = float(2608)
 
 sql_all_tags = "SELECT DISTINCT tag FROM movielens_tag"
 c = conn.cursor()
@@ -146,9 +154,11 @@ for user_profile in user_profiles:
 
     # print users
     # exit()
-
+end = time.time()
+print "Execution time is", start - end, "seconds"
 kMostSimilar = sorted(user_recommendations, key=lambda tup: tup[1], reverse=True)[:30]
-print kMostSimilar
+print "Most similar movies", kMostSimilar
+
 
 # kMostSimilar = sorted(users[userid], key=lambda tup: tup[1], reverse=True)[:30]
 # print kMostSimilar

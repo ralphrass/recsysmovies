@@ -1,106 +1,97 @@
 import sqlite3
-import recommender
-import evaluation
 import utils
+import recommender
 import time
-from opening_feat import load_features
-from sklearn import preprocessing
-import numpy as np
-import itertools as it
-from multiprocessing import Pool
+from multiprocessing import Process, Manager
 
-def main():
+start = time.time()
 
-    RECOMMENDATION_LIST = 5 #increase at each iteration - important to measure Recall
-    iterations = 5
-    LIST_INCREASE = 5
+# load random users and feature vectors
+conn = sqlite3.connect('database.db')
+Users = utils.selectRandomUsers(conn, 1)
+LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET = utils.extract_features()
+foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bin')
+# USER_TFIDF_FEATURES, MOVIE_TFIDF_FEATURES = utils.extract_tfidf_features()
 
-    conn = sqlite3.connect('database.db')
+print len(Users)
 
-    DEEP_FEATURES = load_features('resnet_152_lstm_128.dct')
-    LOW_LEVEL_FEATURES = load_features('low_level_dict.bin')
+feature_vectors = {'low-level': LOW_LEVEL_FEATURES, 'deep': DEEP_FEATURES_BOF, 'hybrid': HYBRID_FEATURES_BOF}
 
-    arr = np.array([x[1] for x in LOW_LEVEL_FEATURES.iteritems()])
-    normalized_ll_features = preprocessing.normalize(arr)
-    LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), normalized_ll_features)}
+user_profiles = recommender.build_user_profiles(conn, Users, feature_vectors)
 
-    HYBRID_FEATURES = {}
-
-    for k in DEEP_FEATURES.iterkeys():
-        try:
-            HYBRID_FEATURES[k] = np.append(DEEP_FEATURES[k], LOW_LEVEL_FEATURES[k])
-        except KeyError:
-            # HYBRID_FEATURES[k] = DEEP_FEATURES[k]
-            continue
-
-    print "Starting Experiment... ", iterations, "iterations.", "recommender list size equal to", RECOMMENDATION_LIST, "."
-    avgrecall_lowlevel = 0
-    avgprecision_lowlevel = 0
-    avgmae_lowlevel = 0
-    avgrecall_deep = 0
-    avgprecision_deep = 0
-    avgmae_deep = 0
-    avgrecall_hybrid = 0
-    avgprecision_hybrid = 0
-    avgmae_hybrid = 0
-
-    for i in range(iterations):
-
-        print i, "iteration."
-
-        Users = utils.selectRandomUsers(conn)
-        # MoviesToPredict = utils.selectTrainingMovies(conn)
-
-        recall, precision, mae = recommender.recommend(conn, Users, RECOMMENDATION_LIST, recommender.lowlevel)
-        print "Low-Level Recall", recall, "Low-Level Precision", precision
-        avgrecall_lowlevel += recall
-        avgprecision_lowlevel += precision
-        avgmae_lowlevel += mae
-
-        recall, precision, mae = recommender.recommend(conn, Users, RECOMMENDATION_LIST, recommender.deep)
-        print "Deep Recall", recall, "Deep Precision", precision
-        avgrecall_deep += recall
-        avgprecision_deep += precision
-        avgmae_deep += mae
-
-        recall, precision, mae = recommender.recommend(conn, Users, RECOMMENDATION_LIST, recommender.hybrid)
-        print "Hybrid Recall", recall, "Hybrid Precision", precision
-        avgrecall_hybrid += recall
-        avgprecision_hybrid += precision
-        avgmae_hybrid += mae
-
-        RECOMMENDATION_LIST += LIST_INCREASE
-
-    print "AVG FULL Low-Level Recall ", (avgrecall_lowlevel / iterations)
-    print "AVG FULL Low-Level Precision ", (avgprecision_lowlevel / iterations)
-    print "AVG FULL Low-Level MAE ", (avgmae_lowlevel / iterations)
-    print "AVG FULL Deep Recall ", (avgrecall_deep / iterations)
-    print "AVG FULL Deep Precision", (avgprecision_deep / iterations)
-    print "AVG FULL Deep MAE ", (avgmae_deep / iterations)
-    print "AVG FULL Hybrid Recall ", (avgrecall_hybrid / iterations)
-    print "AVG FULL Hybrid Precision ", (avgprecision_hybrid / iterations)
-    print "AVG FULL Hybrid MAE ", (avgmae_hybrid / iterations)
-
-    conn.close()
+# print user_profiles
 
 
+def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
+    global user_profiles, LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF
+
+    result = {}
+    start = time.time()
+
+    # Tag-based
+    # p_t, r_t = run(user_profiles, N, USER_TFIDF_FEATURES, MOVIE_TFIDF_FEATURES)
+    # print "Tag-based Recall", r_t, "Tag-based Precision", p_t, "For iteration with", N
+
+    # LOW LEVEL FEATURES check precision, recall and mae
+    p_l, r_l = recommender.run(user_profiles, N, LOW_LEVEL_FEATURES, 'low-level')
+    res_ll[N] = {'ll': {'recall': r_l, 'precision': p_l}}
+    print "Low-Level Recall", r_l, "Low-Level Precision", p_l, "For iteration with", N
+
+    # end = time.time()
+    # print "Execution time", (end - start)
+
+    # start = time.time()
+    # DEEP FEATURES - RESNET
+    # p_d, r_d = recommender.run(user_profiles, N, DEEP_FEATURES_RESNET, 'deep')
+    # # res_deep[N] = {'deep_resnet': {'recall': r_d, 'precision': p_d}}
+    # print "Deep Resnet Recall", r_d, "Deep Resnet Precision", p_d, "For iteration with", N
+    # #
+    # # # HYBRID - RESNET
+    # p_h, r_h = recommender.run(user_profiles, N, HYBRID_FEATURES_RESNET)
+    # # res_hybrid[N] = {'hybrid_resnet': {'recall': r_h, 'precision': p_h}}
+    # print "Hybrid Resnet Recall", r_h, "Hybrid Resnet Precision", p_h, "For iteration with", N
 
 
-def writeResults(iterations, LIST_INCREASE, i, UserAverageMAE, RandomMAE, AVG_MAE, AVG_RECALL, AVG_PRECISION, RandomRecall, RandomPrecision, NUM_USERS, LIMIT_ITEMS_TO_PREDICT):
+    # DEEP FEATURES - BOF
+    p_d, r_d = recommender.run(user_profiles, N, DEEP_FEATURES_BOF, 'deep')
+    res_deep_bof[N] = {'deep_bof': {'recall': r_d, 'precision': p_d}}
+    print "Deep BOF Recall", r_d, "Deep BOF Precision", p_d, "For iteration with", N
+    #
+    # # HYBRID - BOF
+    p_h, r_h = recommender.run(user_profiles, N, HYBRID_FEATURES_BOF, 'hybrid')
+    res_hybrid_bof[N] = {'hybrid_bof': {'recall': r_h, 'precision': p_h}}
+    print "Hybrid BOF Recall", r_h, "Hybrid BOF Precision", p_h, "For iteration with", N
 
-    FILE_NAME = time.strftime('%d-%m-%Y')+'-imageNet-LSTM-128-'+str(NUM_USERS)+'users-'+str(LIMIT_ITEMS_TO_PREDICT)+'items-1iterations-'+str(iterations)+'Plus-List'+str(LIST_INCREASE)+'.txt'
+    p, r = recommender.run(user_profiles, N, None, 'random')
+    res_random[N] = {'random': {'recall': r, 'precision': p}}
+    print "Random Recall", r, "Random Precision", p, "For iteration with", N
 
-    with open(FILE_NAME, 'a') as resfile:
-        striteration = str(i)+" iteration\n"
-        useraverageresult, randomresult = str(UserAverageMAE), str(RandomMAE)
-        randomRecall = str(RandomRecall)
-        randomPrecision = str(RandomPrecision)
-        resfile.write("\User Average MAE "+useraverageresult+"\nRandom MAE"+randomresult+"\n\n")
-        resfile.write("\Random Recall "+randomRecall+"\nRandom Precision "+randomPrecision+"\n\n")
-        mae, recall, precision = str(AVG_MAE), str(AVG_RECALL), str(AVG_PRECISION)
-        res = str(striteration+"\nFeatures MAE "+mae+" Recall "+recall + " Precision "+precision)
-        resfile.write(res)
-        print res
+    # return_dict[N] = {'ll': {'recall': r_l, 'precision': p_l}, 'deep': {'recall': r_d, 'precision': p_d}, 'hybrid': {'recall': r_h, 'precision': p_h}, 'random': {'recall': r, 'precision': p}}
+    end = time.time()
+    print "Execution time", (end - start)
 
-if __name__ == '__main__':
-    main()
+#     result = {'ll': {'recall': r_l, 'precision': p_l}, 'deep': {'recall': r_d, 'precision': p_d}, 'random': {'recall': r, 'precision': p}}
+
+iterations = range(1, 21)
+
+# experiment(1)
+manager = Manager()
+res_ll = manager.dict()
+# res_deep = manager.dict()
+# res_hybrid = manager.dict()
+res_deep_bof = manager.dict()
+res_hybrid_bof = manager.dict()
+res_random = manager.dict()
+
+jobs = []
+for num in iterations:
+    # p = Process(target=experiment, args=(num,res_ll,res_deep,res_hybrid,res_random,res_deep_bof,res_hybrid_bof))
+    p = Process(target=experiment, args=(num, res_ll, res_random, res_deep_bof, res_hybrid_bof))
+    jobs.append(p)
+    p.start()
+
+for proc in jobs:
+    proc.join()
+
+end = time.time()
+print "Execution time", (end - start)

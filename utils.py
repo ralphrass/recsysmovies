@@ -53,6 +53,7 @@ def selectRandomUsers(conn, n=0.01):
                  "JOIN movielens_rating r ON r.userId = u.userId " \
                  "JOIN movielens_movie m ON m.movielensid = r.movielensid " \
                  "JOIN trailers t ON t.imdbid = m.imdbidtt " \
+                 "JOIN movielens_tag tag on tag.userid = u.userid and tag.movielensid = r.movielensid "\
                  "WHERE t.best_file = 1 "
                  # "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200 " \
                  # "LIMIT 1 "
@@ -61,10 +62,14 @@ def selectRandomUsers(conn, n=0.01):
     c.execute(queryUsers)
     all_users = c.fetchall()
 
+    if (n is None):
+	    return all_users
+
     limit = int(len(all_users)*n)
     Users = random.sample(all_users, limit)
 
     return Users
+
 
 def selectTrainingMovies(conn):
 
@@ -115,6 +120,7 @@ def getRandomMovieSet(conn, user):
           "FROM movies m " \
           "JOIN movielens_movie mm ON mm.imdbidtt = m.imdbid " \
           "JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 " \
+          "JOIN movielens_tag tag on tag.movielensid = mm.movielensid " \
           "WHERE EXISTS (SELECT movielensid FROM movielens_rating r WHERE r.movielensid = mm.movielensid) " \
           "EXCEPT " \
           "SELECT t.id, 1, mm.movielensId, m.title " \

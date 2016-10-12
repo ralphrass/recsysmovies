@@ -61,7 +61,7 @@ def cosine(movieI, movieJ, feature_vector):
     featuresI = feature_vector[traileri]
     featuresJ = feature_vector[trailerj]
 
-    return cosine_similarity([featuresI], [featuresJ])[0][0]
+    return cosine_similarity([featuresI], [featuresJ])
 
 
 def cosine_tfidf(userid, movielensid, user_feature_vector, movie_feature_vector):
@@ -105,8 +105,6 @@ def recommend_random(user_profiles, N):
 
     global AVG_ALL_RATINGS, STD_DEVIATION
 
-    conn = sqlite3.connect('database.db')
-
     SumRecall, SumPrecision, SumMAE = 0, 0, 0
 
     for user in user_profiles.iteritems():
@@ -116,24 +114,18 @@ def recommend_random(user_profiles, N):
         if len(datasets['elite_test']) == 0:
             continue
 
-        predictions = []
-        # useravg = utils.getUserAverageRating(conn, user[0])
-
         random_movies = datasets['random']
 
         hits = 0
 
-        for movie in random_movies:
-            prediction = random.uniform(0.5, 8)
-            predictions.append((movie[2], movie[3], prediction))
+        predictions = [(movie[2], movie[3], random.random()*float(10)) for movie in random_movies]
 
-        # For each item rated high by the user
         for eliteMovie in datasets['elite_test']:
-            prediction = random.uniform(0.5, 8)
-            # print "Elite Movie", eliteMovie, prediction
             if len(random_movies) == 0:
                 break
 
+            prediction = random.random()*float(10)
+            # print "Elite Movie", eliteMovie, prediction
             current_predictions = predictions[:]
             current_predictions.append((eliteMovie[2], eliteMovie[3], prediction))
 
@@ -234,6 +226,11 @@ def recommend_random(user_profiles, N):
 
 
 def count_hit(predictions, eliteMovie, N):
+    # print "Predictions", predictions
+    # for pre in predictions:
+    #     print type(pre)
+    #     print type(pre[2])
+    #     exit()
     # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
     predictions_ids = [x[0] for x in sorted(predictions, key=lambda tup: tup[2], reverse=True)]
     eliteIndex = predictions_ids.index(eliteMovie[2])
@@ -254,6 +251,7 @@ def predictUserRating(conn, user_profile, movieI, feature_vector, feature_vector
 
     numerator, denominator = float(0), float(0)
     prediction = 0
+    larger_sim = 0
 
     # itemBaseline = utils.getItemBaseline(conn, user_baseline, movieI[2])  # check this ID index
     #
@@ -273,12 +271,12 @@ def predictUserRating(conn, user_profile, movieI, feature_vector, feature_vector
     for movieJ, sim in AllSimilarities:
         # numerator += (sim * (float(movieJ[1] - baselineUserItem)))  # similarity * user rating
         if sim > 0:
-            numerator += (sim * (float(movieJ[1])))
-            denominator += abs(sim)
+            numerator += (float(sim) * (float(movieJ[1])))
+            denominator += abs(float(sim))
 
     if (numerator != 0 and denominator != 0):
         # prediction = (numerator / denominator) + baselineUserItem
-        prediction = (numerator / denominator)
+        prediction = float(numerator / float(denominator))
 
     # print "Numerator", numerator
     # print "Denominator", denominator
@@ -309,6 +307,7 @@ def get_predict_collaborative_filtering(conn, user_profile, feature_vector, feat
     #     sim_function = cosine
 
     predictions = []
+    top_larger_prediciton = 0
 
     for random_movie in user_profile['datasets']['random']:
         # print "Prediction for ", random_movie
@@ -316,6 +315,8 @@ def get_predict_collaborative_filtering(conn, user_profile, feature_vector, feat
             prediction = predictUserRating(conn, user_profile, random_movie, feature_vector, feature_vector2)
             predictions.append((random_movie[2], random_movie[3], prediction))
             # print prediction
+            if prediction > top_larger_prediciton:
+                top_larger_prediciton = prediction
         except KeyError:
             continue
 
