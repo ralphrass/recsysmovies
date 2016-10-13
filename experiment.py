@@ -9,7 +9,7 @@ start = time.time()
 # load random users and feature vectors
 conn = sqlite3.connect('database.db')
 
-Users = utils.selectRandomUsers(conn, 0.0001)
+Users = utils.selectRandomUsers(conn, 0, 100)
 
 LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET = utils.extract_features()
 foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bin')
@@ -17,16 +17,49 @@ foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bi
 
 print len(Users)
 
-feature_vectors = {'low-level': LOW_LEVEL_FEATURES, 'deep': DEEP_FEATURES_BOF, 'hybrid': HYBRID_FEATURES_BOF}
+# manager = Manager()
+#
+# predictions_low_level = manager.dict()
+# predictions_deep = manager.dict()
+# predictions_hybrid = manager.dict()
+# predictions_random = manager.dict()
+#
+# elite_predictions_ll = manager.dict()
+# elite_predictions_deep = manager.dict()
+# elite_predictions_hybrid = manager.dict()
+# elite_predictions_random = manager.dict()
 
-user_profiles = recommender.build_user_profiles(conn, Users, feature_vectors)
+feature_vectors = [LOW_LEVEL_FEATURES, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF]
+strategies = {0: ('low-level-random', 'low-level-elite'), 1: ('deep-random', 'deep-elite'), 2: ('hybrid-random', 'hybrid-elite')}
 
+# feature_vectors = {'low-level-random': LOW_LEVEL_FEATURES,
+#                    'low-level-elite': LOW_LEVEL_FEATURES,
+#                    'deep-random': DEEP_FEATURES_BOF,
+#                    'deep-elite': DEEP_FEATURES_BOF,
+#                    'hybrid-random': HYBRID_FEATURES_BOF,
+#                    'hybrid-elite': HYBRID_FEATURES_BOF}
+# feature_vectors = {'low-level': LOW_LEVEL_FEATURES, 'deep': DEEP_FEATURES_BOF, 'hybrid': HYBRID_FEATURES_BOF}
+
+user_profile_batches = {}
+batch_size = 2
+
+start = time.time()
+
+user_profiles = recommender.build_user_profiles(Users, feature_vectors, strategies)
 # print user_profiles
+
+# for i in range(1, 5):
+    # user_profiles = recommender.build_user_profiles(conn, Users[(i-1)*batch_size:i*batch_size], feature_vectors)
+    # user_profile_batches[i] = recommender.build_user_profiles(conn, Users[(i-1)*batch_size:i*batch_size], feature_vectors)
+
+print (time.time() - start), "seconds"
+# print user_profile_batches
 # exit()
 
 
-def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
-    global user_profiles, LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF
+# def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
+def experiment(N, user_profiles):
+    global LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF
 
     result = {}
     start = time.time()
@@ -37,7 +70,7 @@ def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
 
     # LOW LEVEL FEATURES check precision, recall and mae
     p_l, r_l = recommender.run(user_profiles, N, LOW_LEVEL_FEATURES, 'low-level')
-    res_ll[N] = {'ll': {'recall': r_l, 'precision': p_l}}
+    # res_ll[N] = {'ll': {'recall': r_l, 'precision': p_l}}
     print "Low-Level Recall", r_l, "Low-Level Precision", p_l, "For iteration with", N
 
     # end = time.time()
@@ -57,16 +90,16 @@ def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
 
     # DEEP FEATURES - BOF
     p_d, r_d = recommender.run(user_profiles, N, DEEP_FEATURES_BOF, 'deep')
-    res_deep_bof[N] = {'deep_bof': {'recall': r_d, 'precision': p_d}}
+    # res_deep_bof[N] = {'deep_bof': {'recall': r_d, 'precision': p_d}}
     print "Deep BOF Recall", r_d, "Deep BOF Precision", p_d, "For iteration with", N
     # #
     # HYBRID - BOF
     p_h, r_h = recommender.run(user_profiles, N, HYBRID_FEATURES_BOF, 'hybrid')
-    res_hybrid_bof[N] = {'hybrid_bof': {'recall': r_h, 'precision': p_h}}
+    # res_hybrid_bof[N] = {'hybrid_bof': {'recall': r_h, 'precision': p_h}}
     print "Hybrid BOF Recall", r_h, "Hybrid BOF Precision", p_h, "For iteration with", N
 
     p, r = recommender.run(user_profiles, N, None, 'random')
-    res_random[N] = {'random': {'recall': r, 'precision': p}}
+    # res_random[N] = {'random': {'recall': r, 'precision': p}}
     print "Random Recall", r, "Random Precision", p, "For iteration with", N
 
     # p, r = recommender.run(user_profiles, N, None, 'tfidf')
@@ -74,28 +107,29 @@ def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
     # print "TFIDF Recall", r, "TFIDF Precision", p, "For iteration with", N
 
     # return_dict[N] = {'ll': {'recall': r_l, 'precision': p_l}, 'deep': {'recall': r_d, 'precision': p_d}, 'hybrid': {'recall': r_h, 'precision': p_h}, 'random': {'recall': r, 'precision': p}}
-    end = time.time()
-    print "Execution time", (end - start)
+    # end = time.time()
+    # print "Execution time", (end - start)
 
 #     result = {'ll': {'recall': r_l, 'precision': p_l}, 'deep': {'recall': r_d, 'precision': p_d}, 'random': {'recall': r, 'precision': p}}
 
 iterations = range(1, 21)
 
 # experiment(1)
-manager = Manager()
-res_ll = manager.dict()
+# manager = Manager()
+# res_ll = manager.dict()
 # res_deep = manager.dict()
 # res_hybrid = manager.dict()
-res_deep_bof = manager.dict()
-res_hybrid_bof = manager.dict()
-res_random = manager.dict()
+# res_deep_bof = manager.dict()
+# res_hybrid_bof = manager.dict()
+# res_random = manager.dict()
 
 # experiment(10, res_ll, res_random, res_deep_bof, res_hybrid_bof)
 
 jobs = []
-for num in iterations:
+for index in iterations:
     # p = Process(target=experiment, args=(num,res_ll,res_deep,res_hybrid,res_random,res_deep_bof,res_hybrid_bof))
-    p = Process(target=experiment, args=(num, res_ll, res_random, res_deep_bof, res_hybrid_bof))
+    # p = Process(target=experiment, args=(num, res_ll, res_random, res_deep_bof, res_hybrid_bof))
+    p = Process(target=experiment, args=(index, user_profiles))
     jobs.append(p)
     p.start()
 
