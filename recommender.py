@@ -45,7 +45,7 @@ def predict_user_rating(user_baseline, movieid, all_similarities):
     item_baseline = utils.getItemBaseline(user_baseline, movieid)
     user_item_baseline = (_avg_ratings + user_baseline + item_baseline)
 
-    numerator = sum((rating - user_item_baseline) * sim for rating, sim in all_similarities)
+    numerator = sum((rating - user_item_baseline) * sim if sim > 0 else 0 for rating, sim in all_similarities)
     denominator = reduce(operator.add, [abs(x[1]) for x in all_similarities])
     try:
         prediction = (numerator / denominator) + user_item_baseline

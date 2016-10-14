@@ -57,11 +57,12 @@ def selectRandomUsers(conn, limit1, limit2):
                  # "GROUP BY r.userId HAVING COUNT(r.movielensId) > 200 " \
                  # "LIMIT 1 "
     queryUsers = "SELECT u.userid, u.avgrating " \
-                 "FROM movielens_user_trailer u " \
+                 "FROM movielens_user_trailer u "\
                  "LIMIT ?, ?"
 
     c = conn.cursor()
     c.execute(queryUsers, (limit1, limit2,))
+    # c.execute(queryUsers)
     all_users = c.fetchall()
     return all_users
 
@@ -147,6 +148,8 @@ def getRandomMovieSet(user):
     Movies = random.sample(all_movies, limit)
     # print Movies
 
+    conn.close()
+
     return Movies
 
 def getUserBaseline(user):
@@ -159,6 +162,9 @@ def getUserBaseline(user):
     # print sql, user
     c = conn.cursor()
     c.execute(sql, (user,))
+
+    conn.close()
+
     return c.fetchone()[0]
 
 def getItemBaseline(userbaseline, movie):
@@ -171,6 +177,9 @@ def getItemBaseline(userbaseline, movie):
     # print sql, userbaseline, movie
     c = conn.cursor()
     c.execute(sql, (userbaseline, movie,))
+
+    conn.close()
+
     return c.fetchone()[0]
 
 
@@ -239,6 +248,8 @@ def getUserTrainingTestMovies(user):
     c.execute(sql, (user,))
     all_movies = c.fetchall()
     elite_test_set = filter((lambda x: x[1] > 4), all_movies)
+
+    conn.close()
 
     return elite_test_set, all_movies
 
