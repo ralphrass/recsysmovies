@@ -8,8 +8,8 @@ from multiprocessing import Process, Manager
 _avg_ratings = 3.51611876907599
 _std_deviation = 1.098732183
 
-user_features = of.load_features('users_tfidf_profile.bin')
-movie_features = of.load_features('movies_tfidf_profile.bin')
+# user_features = of.load_features('users_tfidf_profile.bin')
+# movie_features = of.load_features('movies_tfidf_profile.bin')
 
 # conn = sqlite3.connect('database.db')
 
@@ -154,6 +154,9 @@ def build_user_profiles(Users, feature_vectors, strategies):
 
     for user in Users:
 
+        if Users.index(user) % 10 == 0:
+            print Users.index(user), " profiles built"
+
         user_baseline = utils.getUserBaseline(user[0])
         user_movies_test, all_movies = utils.getUserTrainingTestMovies(user[0])
         # userMoviesTraining, userMoviesTest, full_test_set, all_movies = utils.getUserTrainingTestMovies(conn, user[0])
@@ -186,15 +189,9 @@ def build_user_profiles(Users, feature_vectors, strategies):
         # print predictions
         # exit()
 
-        # predictions_low_level = get_predictions(user_baseline, random_movies, all_movies, feature_vectors['low-level'])
-        # predictions_deep = get_predictions(user_baseline, random_movies, all_movies, feature_vectors['deep'])
-        # predictions_hybrid = get_predictions(user_baseline, random_movies, all_movies, feature_vectors['hybrid'])
         predictions_random = get_random_predictions(random_movies)
         # # predictions_tfidf = get_tag_predictions(random_movies, all_movies)
 
-        # elite_predictions_ll = get_predictions(user_baseline, user_movies_test, all_movies, feature_vectors['low-level'])
-        # elite_predictions_deep = get_predictions(user_baseline, user_movies_test, all_movies, feature_vectors['deep'])
-        # elite_predictions_hybrid = get_predictions(user_baseline, user_movies_test, all_movies, feature_vectors['hybrid'])
         elite_predictions_random = get_random_predictions(user_movies_test)
         # # elite_predicitons_tfidf = get_tag_predictions(userMoviesTest, all_movies)
 
@@ -207,18 +204,6 @@ def build_user_profiles(Users, feature_vectors, strategies):
                                   # 'test': full_test_set, 'random': random_movies},
                                   # 'baseline': user_baseline,
 
-
-
-                                  # 'userid': user[0],
-                                  # 'predictions': {'low-level': predictions_low_level,
-                                  #                 'deep': predictions_deep,
-                                  #                 'hybrid': predictions_hybrid,
-                                  #                 'random': predictions_random},
-                                  # 'elite_predictions': {'low-level': elite_predictions_ll,
-                                  #                       'deep': elite_predictions_deep,
-                                  #                       'hybrid': elite_predictions_hybrid,
-                                  #                       'random': elite_predictions_random}}
-
                                   'userid': user[0],
                                   'predictions': {'low-level': predictions['low-level-random'],
                                                   'deep': predictions['deep-random'],
@@ -229,8 +214,4 @@ def build_user_profiles(Users, feature_vectors, strategies):
                                                         'hybrid': predictions['hybrid-elite'],
                                                         'random': elite_predictions_random}}
 
-
-
-                                # 'predictions': {'random': predictions_random},
-                                # 'elite_predictions': {'random': elite_predictions_random}}
     return user_profiles

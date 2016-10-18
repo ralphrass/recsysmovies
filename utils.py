@@ -148,7 +148,7 @@ def getRandomMovieSet(user):
     Movies = random.sample(all_movies, limit)
     # print Movies
 
-    conn.close()
+    # conn.close()
 
     return Movies
 
@@ -163,7 +163,7 @@ def getUserBaseline(user):
     c = conn.cursor()
     c.execute(sql, (user,))
 
-    conn.close()
+    # conn.close()
 
     return c.fetchone()[0]
 
@@ -178,7 +178,7 @@ def getItemBaseline(userbaseline, movie):
     c = conn.cursor()
     c.execute(sql, (userbaseline, movie,))
 
-    conn.close()
+    # conn.close()
 
     return c.fetchone()[0]
 
@@ -249,7 +249,7 @@ def getUserTrainingTestMovies(user):
     all_movies = c.fetchall()
     elite_test_set = filter((lambda x: x[1] > 4), all_movies)
 
-    conn.close()
+    # conn.close()
 
     return elite_test_set, all_movies
 

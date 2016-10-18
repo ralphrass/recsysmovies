@@ -9,7 +9,7 @@ start = time.time()
 # load random users and feature vectors
 conn = sqlite3.connect('database.db')
 
-Users = utils.selectRandomUsers(conn, 0, 100)
+Users = utils.selectRandomUsers(conn, 0, 50)
 
 LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET = utils.extract_features()
 foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bin')
@@ -17,52 +17,21 @@ foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bi
 
 print len(Users)
 
-# manager = Manager()
-#
-# predictions_low_level = manager.dict()
-# predictions_deep = manager.dict()
-# predictions_hybrid = manager.dict()
-# predictions_random = manager.dict()
-#
-# elite_predictions_ll = manager.dict()
-# elite_predictions_deep = manager.dict()
-# elite_predictions_hybrid = manager.dict()
-# elite_predictions_random = manager.dict()
-
 feature_vectors = [LOW_LEVEL_FEATURES, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF]
 strategies = {0: ('low-level-random', 'low-level-elite'), 1: ('deep-random', 'deep-elite'), 2: ('hybrid-random', 'hybrid-elite')}
-
-# feature_vectors = {'low-level-random': LOW_LEVEL_FEATURES,
-#                    'low-level-elite': LOW_LEVEL_FEATURES,
-#                    'deep-random': DEEP_FEATURES_BOF,
-#                    'deep-elite': DEEP_FEATURES_BOF,
-#                    'hybrid-random': HYBRID_FEATURES_BOF,
-#                    'hybrid-elite': HYBRID_FEATURES_BOF}
-# feature_vectors = {'low-level': LOW_LEVEL_FEATURES, 'deep': DEEP_FEATURES_BOF, 'hybrid': HYBRID_FEATURES_BOF}
-
-user_profile_batches = {}
-batch_size = 2
 
 start = time.time()
 
 user_profiles = recommender.build_user_profiles(Users, feature_vectors, strategies)
-# print user_profiles
-
-# for i in range(1, 5):
-    # user_profiles = recommender.build_user_profiles(conn, Users[(i-1)*batch_size:i*batch_size], feature_vectors)
-    # user_profile_batches[i] = recommender.build_user_profiles(conn, Users[(i-1)*batch_size:i*batch_size], feature_vectors)
 
 print (time.time() - start), "seconds"
-# print user_profile_batches
-# exit()
 
 
-# def experiment(N, res_ll, res_random, res_deep_bof, res_hybrid_bof):
 def experiment(N, user_profiles):
     global LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF
 
     result = {}
-    start = time.time()
+    # start = time.time()
 
     # Tag-based
     # p_t, r_t = run(user_profiles, N, USER_TFIDF_FEATURES, MOVIE_TFIDF_FEATURES)
@@ -114,21 +83,8 @@ def experiment(N, user_profiles):
 
 iterations = range(1, 21)
 
-# experiment(1)
-# manager = Manager()
-# res_ll = manager.dict()
-# res_deep = manager.dict()
-# res_hybrid = manager.dict()
-# res_deep_bof = manager.dict()
-# res_hybrid_bof = manager.dict()
-# res_random = manager.dict()
-
-# experiment(10, res_ll, res_random, res_deep_bof, res_hybrid_bof)
-
 jobs = []
 for index in iterations:
-    # p = Process(target=experiment, args=(num,res_ll,res_deep,res_hybrid,res_random,res_deep_bof,res_hybrid_bof))
-    # p = Process(target=experiment, args=(num, res_ll, res_random, res_deep_bof, res_hybrid_bof))
     p = Process(target=experiment, args=(index, user_profiles))
     jobs.append(p)
     p.start()
