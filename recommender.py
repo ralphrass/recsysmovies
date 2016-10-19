@@ -42,7 +42,8 @@ def predict_user_rating(user_baseline, movieid, all_similarities):
 
     global _avg_ratings
 
-    item_baseline = utils.getItemBaseline(user_baseline, movieid)
+    # item_baseline = utils.getItemBaseline(user_baseline, movieid)
+    item_baseline = utils.get_item_baseline(user_baseline, movieid)
     user_item_baseline = (_avg_ratings + user_baseline + item_baseline)
 
     numerator = sum((rating - user_item_baseline) * sim if sim > 0 else 0 for rating, sim in all_similarities)
@@ -157,7 +158,9 @@ def build_user_profiles(Users, feature_vectors, strategies):
         if Users.index(user) % 10 == 0:
             print Users.index(user), " profiles built"
 
-        user_baseline = utils.getUserBaseline(user[0])
+        # user_baseline = utils.getUserBaseline(user[0])
+        user_baseline = utils.get_user_baseline(user[0])
+
         user_movies_test, all_movies = utils.getUserTrainingTestMovies(user[0])
         # userMoviesTraining, userMoviesTest, full_test_set, all_movies = utils.getUserTrainingTestMovies(conn, user[0])
         # print "User", user

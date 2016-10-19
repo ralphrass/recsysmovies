@@ -4,7 +4,19 @@ import random
 import sqlite3
 from opening_feat import load_features
 import itertools as it
+import pandas as pd
 from sklearn import preprocessing
+
+
+conn = sqlite3.connect('database.db')
+
+_ratings = pd.read_sql("SELECT userid, SUM(rating)/COUNT(rating) AS average FROM movielens_rating GROUP BY userid ORDER BY userid", conn,
+                      columns=['average'], index_col='userID')
+
+_ratings_by_movie = pd.read_sql("SELECT movielensid, SUM(rating)/COUNT(rating) AS average FROM movielens_rating GROUP BY movielensid ORDER BY movielensid", conn,
+                      columns=['average'], index_col='movielensID')
+
+_global_average = _ratings['average'].mean()
 
 
 def evaluateAverage(Sum, Count):
@@ -65,6 +77,7 @@ def selectRandomUsers(conn, limit1, limit2):
     # c.execute(queryUsers)
     all_users = c.fetchall()
     return all_users
+
 
     # if n is None:
     #     return all_users
@@ -152,11 +165,26 @@ def getRandomMovieSet(user):
 
     return Movies
 
+def get_user_baseline(userid):
+
+    global _ratings, _global_average
+
+    return _ratings.loc[userid]['average'] - _global_average
+
+    # user_ratings = _ratings.loc[userid]
+
+    # return user_ratings['rating'].mean() - _global_average
+
+    # return user_ratings['rating'].sum() / len(user_ratings) - _global_average
+
+
 def getUserBaseline(user):
+
+    global _global_average
 
     conn = sqlite3.connect('database.db')
 
-    sql = "SELECT SUM(rating - 3.5161)/COUNT(rating) " \
+    sql = "SELECT SUM(rating)/COUNT(rating) " \
           "FROM movielens_rating " \
           "WHERE userid = ?"
     # print sql, user
@@ -165,22 +193,37 @@ def getUserBaseline(user):
 
     # conn.close()
 
-    return c.fetchone()[0]
+    return c.fetchone()[0] - _global_average
+
+
+def get_item_baseline(user_baseline, movieid):
+
+    global _ratings_by_movie, _global_average
+
+    return _ratings_by_movie.loc[movieid]['average'] - user_baseline - _global_average
+
+    # movie_ratings = _ratings_by_movie[_ratings_by_movie.movielensID == movieid]
+
+    # return movie_ratings['rating'].mean() - user_baseline - _global_average
+
+
 
 def getItemBaseline(userbaseline, movie):
 
+    global _global_average
+
     conn = sqlite3.connect('database.db')
 
-    sql = "SELECT SUM(rating - ? - 3.5161)/COUNT(rating) " \
+    sql = "SELECT SUM(rating)/COUNT(rating) " \
           "FROM movielens_rating " \
           "WHERE movielensid = ?"
     # print sql, userbaseline, movie
     c = conn.cursor()
-    c.execute(sql, (userbaseline, movie,))
+    c.execute(sql, (movie,))
 
     # conn.close()
 
-    return c.fetchone()[0]
+    return c.fetchone()[0] - userbaseline - _global_average
 
 
 # def getUserAverageRating(conn, user):
