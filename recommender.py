@@ -1,6 +1,6 @@
 import utils
 import random
-import opening_feat as of
+from opening_feat import load_features
 import operator
 from sklearn.metrics.pairwise import cosine_similarity
 from multiprocessing import Process, Manager
@@ -56,10 +56,14 @@ def predict_user_rating(user_baseline, movieid, all_similarities):
     return prediction
 
 
-def get_predictions(store_result, strategy, user_baseline, movies, all_movies, feature_vector):
+def get_predictions(store_result, strategy, user_baseline, movies, all_movies, feature_vector, sim_matrix):
+
+    # predictions = [(movie[2], predict_user_rating(user_baseline, movie[2],
+    #                                               [(movieJ[1], float(cosine(movie, movieJ, feature_vector)))
+    #                                                for movieJ in all_movies])) for movie in movies]
 
     predictions = [(movie[2], predict_user_rating(user_baseline, movie[2],
-                                                  [(movieJ[1], float(cosine(movie, movieJ, feature_vector)))
+                                                  [(movieJ[1], sim_matrix[movieJ[0]][movie[0]])
                                                    for movieJ in all_movies])) for movie in movies]
 
     # return sorted(predictions, key=lambda tup: tup[1], reverse=True)
@@ -146,7 +150,7 @@ def count_hit(predictions, elite_movie, n):
     return 0
 
 
-def build_user_profiles(Users, feature_vectors, strategies):
+def build_user_profiles(Users, feature_vectors, strategies, similarity_matrices):
 
     user_profiles, predictions = {}, {}
     manager = Manager()
@@ -155,7 +159,7 @@ def build_user_profiles(Users, feature_vectors, strategies):
 
     for user in Users:
 
-        if Users.index(user) % 10 == 0:
+        if Users.index(user) % 1000 == 0:
             print Users.index(user), " profiles built"
 
         # user_baseline = utils.getUserBaseline(user[0])
@@ -181,8 +185,15 @@ def build_user_profiles(Users, feature_vectors, strategies):
                 else:
                     movie_set = user_movies_test
 
+                if 'low-level' in strategy:
+                    sim_matrix = similarity_matrices[0]
+                elif 'deep' in strategy:
+                    sim_matrix = similarity_matrices[1]
+                else: # hybrid
+                    sim_matrix = similarity_matrices[2]
+
                 p = Process(target=get_predictions, args=(predictions, strategy, user_baseline, movie_set,
-                                                          all_movies, feature_vector))
+                                                          all_movies, feature_vector, sim_matrix))
                 jobs.append(p)
                 p.start()
 

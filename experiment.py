@@ -2,7 +2,6 @@ import sqlite3
 import utils
 import recommender
 import time
-import pandas as pd
 from multiprocessing import Process, Manager
 
 start = time.time()
@@ -10,7 +9,7 @@ start = time.time()
 # load random users and feature vectors
 conn = sqlite3.connect('database.db')
 
-Users = utils.selectRandomUsers(conn, 0, 85)
+Users = utils.selectRandomUsers(conn, 0, 850)
 
 LOW_LEVEL_FEATURES, DEEP_FEATURES_RESNET, HYBRID_FEATURES_RESNET = utils.extract_features()
 foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bin')
@@ -18,12 +17,13 @@ foo, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF = utils.extract_features('bof_128.bi
 
 print len(Users)
 
+similarity_matrices = utils.get_similarity_matrices()
 feature_vectors = [LOW_LEVEL_FEATURES, DEEP_FEATURES_BOF, HYBRID_FEATURES_BOF]
 strategies = {0: ('low-level-random', 'low-level-elite'), 1: ('deep-random', 'deep-elite'), 2: ('hybrid-random', 'hybrid-elite')}
 
 start = time.time()
 
-user_profiles = recommender.build_user_profiles(Users, feature_vectors, strategies)
+user_profiles = recommender.build_user_profiles(Users, feature_vectors, strategies, similarity_matrices)
 
 print (time.time() - start), "seconds"
 

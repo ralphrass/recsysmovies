@@ -149,6 +149,7 @@ def getRandomMovieSet(user):
           "JOIN trailers t ON t.imdbID = m.imdbID AND t.best_file = 1 " \
           "JOIN movielens_rating r ON r.movielensid = mm.movielensid " \
           "WHERE r.userid = ? "
+
     # "AND CAST(imdbvotes AS NUMERIC) > 200 " \
     # print sql, user
     limit = 100
@@ -336,6 +337,15 @@ def convert_array(text):
     out = io.BytesIO(text)
     out.seek(0)
     return np.load(out)
+
+
+def get_similarity_matrices():
+
+    similarities_low_level = load_features('movie_cosine_similarities_low_level.bin')
+    similarities_deep = load_features('movie_cosine_similarities_deep.bin')
+    similarities_hybrid = load_features('movie_cosine_similarities_hybrid.bin')
+
+    return [similarities_low_level, similarities_deep, similarities_hybrid]
 
 
 def extract_features(deep_feautures='resnet_152_lstm_128.dct'):
