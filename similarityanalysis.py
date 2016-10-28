@@ -28,7 +28,15 @@ scaler = preprocessing.StandardScaler().fit(arr)
 std = scaler.transform(arr)
 LOW_LEVEL_FEATURES = {k: v for k, v in it.izip(LOW_LEVEL_FEATURES.keys(), std)}
 
-features = LOW_LEVEL_FEATURES
+HYBRID_FEATURES = {}
+
+for k in DEEP_FEATURES.iterkeys():
+    try:
+        HYBRID_FEATURES[k] = np.append(DEEP_FEATURES[k], LOW_LEVEL_FEATURES[k])
+    except KeyError:
+        continue
+
+features = HYBRID_FEATURES
 
 # arr = np.array([x[1] for x in low_level_features.iteritems()])
 # normalized_ll_features = preprocessing.normalize(arr)
@@ -60,8 +68,8 @@ features = LOW_LEVEL_FEATURES
 # exit()
 # trailerid = 2216 # Jurassic World
 # trailerid = 5458 # the lord of the rings
-# trailerid = 4484 # Matrix
-trailerid = 5632 # ToyStory
+trailerid = 4484 # Matrix
+# trailerid = 5632 # ToyStory
 # trailerid = 2
 # trailerid = 3341
 # movie = low_level_features[trailerid]
