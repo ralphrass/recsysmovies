@@ -1,6 +1,10 @@
+# Simplicity is the final achievement. After one has played a vast quantity of notes and more notes, it is
+# simplicity that emerges as the crowning reward of art. Frederic Chopin.
+
 import utils
 import random
 from opening_feat import load_features
+import numpy as np
 import operator
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import mean_absolute_error
@@ -57,17 +61,27 @@ def predict_user_rating(user_baseline, movieid, all_similarities, _ratings_by_mo
     return prediction
 
 
-def get_predictions(store_result, strategy, user_baseline, movies, all_movies, sim_matrix, _ratings_by_movie, _global_average):
+def get_predictions(store_result, strategy, user_baseline, movies, all_movies, sim_matrix, _ratings_by_movie,
+                    _global_average):
 
     predictions = [(movie[2], predict_user_rating(user_baseline, movie[2],
                                                   [(movieJ[1], sim_matrix[movieJ[0]][movie[0]])
-                                                   for movieJ in all_movies], _ratings_by_movie, _global_average),
-                    _ratings_by_movie, _global_average) for movie in movies]
+                                                   for movieJ in all_movies], _ratings_by_movie, _global_average))
+                   for movie in movies]
 
-    mae = mean_absolute_error([movie[1] for movie in movies], [movie[1] for movie in predictions])
+    # predictions = [predict_user_rating(user_baseline, movie[2],
+    #                                    [(movieJ[1], sim_matrix[movieJ[0]][movie[0]]) for movieJ in all_movies],
+    #                                    _ratings_by_movie, _global_average) for movie in movies]
 
+    # try:
+        # mae = mean_absolute_error([movie[1] for movie in movies], [movie[1] for movie in predictions])
+        # mae = mean_absolute_error(movies, predictions)
+    # except ValueError:
+    #     mae = 0
+
+    # predictions.sort(reverse=True)
     store_result[strategy] = sort_desc(predictions)
-    store_result[strategy+'-mae'] = mae
+    # store_result[strategy+'-mae'] = mae
 
 
 # def get_tag_predictions(random_movies, all_movies):
@@ -92,15 +106,16 @@ def get_random_predictions(movies):
 
     global _avg_ratings, _std_deviation
 
-    predictions = [(movie[2], random.gauss(_avg_ratings, _std_deviation)) for movie in movies]
+    # predictions = (np.random.uniform(low=0.5, high=5.0, size=len(movies))).tolist()
+    random_movies = [(movie[2], random.uniform(0.5, 5)) for movie in movies]
+    random_movies = sort_desc(random_movies)
 
-    mae = mean_absolute_error([movie[1] for movie in movies], [movie[1] for movie in predictions])
+    # try:
+    #     mae = mean_absolute_error(movies, predictions)
+    # except ValueError:
+    #     mae = 0
 
-    # predictions = zip((_avg_ratings * np.random.randn(1, len(movies)) + _std_deviation)[0].tolist(), [movie[2] for movie in movies])
-    # predictions = _avg_ratings * np.random.randn(0.5,5) + _std_deviation**2
-    # return sorted(predictions, key=lambda tup: tup[1], reverse=True)
-    desc = sort_desc(predictions)
-    return desc, mae
+    return random_movies
 
 
 def sort_desc(list_to_sort):
@@ -109,126 +124,100 @@ def sort_desc(list_to_sort):
     return list_to_sort
 
 
-def run(user_profiles, N, feature_vector, feature_vector_name):
+def evaluate(user_profiles, N, feature_vector_name):
 
-    sum_recall, sum_precision, sum_mae = 0, 0, 0
+    sum_recall, sum_precision, sum_false_positive_rate = 0, 0, 0
 
     for user, profile in user_profiles.iteritems():
 
-        hits = 0
+        relevant_set = profile['datasets']['relevant_movies']
+        irrelevant_set = profile['datasets']['irrelevant_movies']
 
-        for elite_movie in profile['elite_predictions'][feature_vector_name]:
+        full_prediction_set = profile['predictions'][feature_vector_name]
+        # full_set.sort(reverse=True)
+        topN = [x[0] for x in full_prediction_set[:N]]  # topN list composed by movies IDs
 
-            if feature_vector is list and elite_movie[0] not in feature_vector:
-                continue
+        # how many items of the relevant set are retrieved (top-N)?
+        true_positives = float(sum([1 if movie[2] in topN else 0 for movie in relevant_set]))
+        true_negatives = float(sum([1 if movie[2] not in topN else 0 for movie in irrelevant_set]))
 
-            hits += count_hit(profile['predictions'][feature_vector_name], elite_movie, N)
+        false_negatives = float(len(relevant_set) - true_positives)
+        false_positives = float(len(irrelevant_set) - true_negatives)
 
-        if hits > 0:
-            recall = hits / float(len(profile['elite_predictions'][feature_vector_name]))
-            sum_recall += recall
-            sum_precision += (recall / float(N))
+        # print "Relevant Set", relevant_set
+        # print "Size", len(relevant_set)
+        # print "Irrelevant Set", irrelevant_set
+        # print "Size", len(irrelevant_set)
+        # print "Full Set", full_prediction_set
+        # print len(full_prediction_set)
+        # print "Feature Vector", feature_vector_name
+        # print "True Positives", true_positives
+        # print "True Negatives", true_negatives
+        # print "False Negatives", false_negatives
+        # print "False Positives", false_positives
+        # print "Top-N", topN
+        # exit()
 
-        sum_mae += profile['mae'][feature_vector_name]
+        try:
+            precision = true_positives / (true_positives + false_positives)
+        except ZeroDivisionError:
+            precision = 0
+
+        recall = true_positives / (true_positives + false_negatives)
+
+        sum_precision += precision
+        sum_recall += recall
 
     size = len(user_profiles)
-    avg_recall = utils.evaluateAverage(sum_recall, size)
-    avg_precision = utils.evaluateAverage(sum_precision, size)
-    avg_mae = utils.evaluateAverage(sum_mae, size)
-
-    return avg_precision, avg_recall, avg_mae
+    return utils.evaluateAverage(sum_precision, size), utils.evaluateAverage(sum_recall, size)
 
 
-def count_hit(predictions, elite_movie, n):
-
-    for prediction in predictions:
-        if elite_movie[1] > prediction[1]:
-            index = predictions.index(prediction)
-            return int(index < n)
-
-    return 0
-
-
-def build_user_profiles(Users, feature_vectors, strategies, similarity_matrices, _ratings, _ratings_by_movie, _global_average):
+def build_user_profile(users, feature_vectors, similarity_matrices, _ratings, _ratings_by_movie, _global_average):
 
     user_profiles, predictions = {}, {}
     manager = Manager()
+
     predictions = manager.dict()
 
-    for user in Users:
+    for user in users:
 
-        if Users.index(user) % 1000 == 0:
-            print Users.index(user), " profiles built"
-
-        # user_baseline = utils.getUserBaseline(user[0])
         user_baseline = utils.get_user_baseline(user[0], _ratings, _global_average)
-
-        user_movies_test, all_movies = utils.getUserTrainingTestMovies(user[0])
-        # userMoviesTraining, userMoviesTest, full_test_set, all_movies = utils.getUserTrainingTestMovies(conn, user[0])
-        # print "User", user
-        # print "Test", user_movies_test
-        # print "All", all_movies
+        user_movies_test, all_movies, garbage_test_set = utils.getUserTrainingTestMovies(user[0])
 
         if len(user_movies_test) == 0:
-            # print "User", user, "failed"
             continue
 
         random_movies = utils.getRandomMovieSet(user[0])
+        movies_set = user_movies_test + garbage_test_set + random_movies
 
         jobs = []
+
         for feature_vector in feature_vectors:
-            for strategy in strategies[feature_vectors.index(feature_vector)]:
-                if 'random' in strategy:
-                    movie_set = random_movies
-                else:
-                    movie_set = user_movies_test
+            if len(feature_vector[1]) == 5:  # LL
+                sim_matrix = similarity_matrices[0]
+                feature_vector_name = 'low-level'
+            elif len(feature_vector[1]) == 128:  # Deep
+                sim_matrix = similarity_matrices[1]
+                feature_vector_name = 'deep'
+            else:  # hybrid
+                sim_matrix = similarity_matrices[2]
+                feature_vector_name = 'hybrid'
 
-                if 'low-level' in strategy:
-                    sim_matrix = similarity_matrices[0]
-                elif 'deep' in strategy:
-                    sim_matrix = similarity_matrices[1]
-                else: # hybrid
-                    sim_matrix = similarity_matrices[2]
-
-                p = Process(target=get_predictions, args=(predictions, strategy, user_baseline, movie_set,
-                                                          all_movies, sim_matrix, _ratings_by_movie, _global_average))
-                jobs.append(p)
-                p.start()
+            p = Process(target=get_predictions, args=(predictions, feature_vector_name, user_baseline, movies_set,
+                                                      all_movies, sim_matrix, _ratings_by_movie, _global_average))
+            jobs.append(p)
+            p.start()
 
         for proc in jobs:
             proc.join()
 
-        # print predictions
-        # exit()
+        predictions_random = get_random_predictions(movies_set)
 
-        predictions_random, x = get_random_predictions(random_movies)
-        # # predictions_tfidf = get_tag_predictions(random_movies, all_movies)
-
-        elite_predictions_random, random_mae = get_random_predictions(user_movies_test)
-        # # elite_predicitons_tfidf = get_tag_predictions(userMoviesTest, all_movies)
-
-        # print predictions['deep-random']
-        # exit()
-
-        user_profiles[user[0]] = {
-                                  # 'datasets': {'all_movies': all_movies, 'train': userMoviesTraining,
-                                  #              'elite_test': userMoviesTest,
-                                  # 'test': full_test_set, 'random': random_movies},
-                                  # 'baseline': user_baseline,
+        user_profiles[user[0]] = {'datasets': {'relevant_movies': user_movies_test,
+                                               'irrelevant_movies': garbage_test_set},
                                   'userid': user[0],
-                                  'predictions': {'low-level': predictions['low-level-random'],
-                                                  'deep': predictions['deep-random'],
-                                                  'hybrid': predictions['hybrid-random'],
-                                                  'random': predictions_random},
-                                  'elite_predictions': {'low-level': predictions['low-level-elite'],
-                                                        'deep': predictions['deep-elite'],
-                                                        'hybrid': predictions['hybrid-elite'],
-                                                        'random': elite_predictions_random},
-                                  'mae': {'low-level': predictions['low-level-elite-mae'],
-                                          'deep': predictions['deep-elite-mae'],
-                                          'hybrid': predictions['hybrid-elite-mae'],
-                                          'random': random_mae}}
-
-        # print user_profiles[user[0]]['mae']
-
+                                  'predictions': {'low-level': predictions['low-level'],
+                                                  'deep': predictions['deep'],
+                                                  'hybrid': predictions['hybrid'],
+                                                  'random': predictions_random}}
     return user_profiles

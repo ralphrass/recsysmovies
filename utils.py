@@ -278,11 +278,12 @@ def getUserTrainingTestMovies(user):
     c = conn.cursor()
     c.execute(sql, (user,))
     all_movies = c.fetchall()
-    elite_test_set = filter((lambda x: x[1] > 4), all_movies)
+    elite_test_set = filter((lambda x: x[1] > 4), all_movies)  # good movies for each user
+    garbage_test_set = filter((lambda x: x[1] < 3), all_movies)  # bad movies for each user
 
     # conn.close()
 
-    return elite_test_set, all_movies
+    return elite_test_set, all_movies, garbage_test_set
 
     # sql = "SELECT t.id, r.rating, m.movielensid " \
     #       "FROM trailers t " \
@@ -357,6 +358,11 @@ def extract_features(deep_feautures='resnet_152_lstm_128.dct'):
             HYBRID_FEATURES[k] = np.append(DEEP_FEATURES[k], LOW_LEVEL_FEATURES[k])
         except KeyError:
             continue
+
+    # arr = np.array([x[1] for x in HYBRID_FEATURES.iteritems()])
+    # scaler = preprocessing.StandardScaler().fit(arr)
+    # std = scaler.transform(arr)
+    # HYBRID_FEATURES = {k: v for k, v in it.izip(HYBRID_FEATURES.keys(), std)}
 
     return LOW_LEVEL_FEATURES, DEEP_FEATURES, HYBRID_FEATURES
 
