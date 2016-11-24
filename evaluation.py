@@ -1,164 +1,41 @@
-from sklearn.metrics import mean_absolute_error
-# import constants
 import utils
-import random
-import numpy as np
-import string
-
-RATING_THRESHOLD = 3
 
 
-def evaluateAverageMAE(SumMAE, CountUsers):
-    MAE = (SumMAE / CountUsers)
-    return MAE
+def evaluate(user_profiles, N, feature_vector_name, sim_matrix):
 
+    sum_recall, sum_precision, sum_false_positive_rate, sum_diversity = 0, 0, 0, 0
 
-# predictions is a list of tuples which contains: MovieLensId, MovieTitle, PredictedRating
-def evaluateMAE(conn, user, predictions, movielensid_index=0, rating_index=2):
-    predictedRatings, realRatings = [], []
+    for user, profile in user_profiles.iteritems():
 
-    query = "SELECT rating FROM movielens_rating WHERE userId = ? AND movielensId = ?"
+        relevant_set = profile['datasets']['relevant_movies']
+        irrelevant_set = profile['datasets']['irrelevant_movies']
+        full_prediction_set = profile['predictions'][feature_vector_name]
 
-    # print "Full Predictions", predictions
+        topN = [x[0] for x in full_prediction_set[:N]]  # topN list composed by movies IDs
+        rec_set = [x[2] for x in full_prediction_set[:N]]  # topN list composed by trailers IDs
 
-    # will search for intersections
-    for prediction in predictions:
-        c = conn.cursor()
-        c.execute(query, (user, prediction[movielensid_index],))
-        result = c.fetchone()
+        # how many items of the relevant set are retrieved (top-N)?
+        true_positives = float(sum([1 if movie[2] in topN else 0 for movie in relevant_set]))
+        true_negatives = float(sum([1 if movie[2] not in topN else 0 for movie in irrelevant_set]))
 
-        if (type(result) is tuple):
-            predictedRatings.append(prediction[rating_index])
-            realRatings.append(float(result[0]))
+        false_negatives = float(len(relevant_set) - true_positives)
+        false_positives = float(len(irrelevant_set) - true_negatives)
 
-    # print "Predictions"
-    # print len(predictions)
-    # print "Real Ratings"
-    # print len(realRatings)
+        if N > 1 and sim_matrix is not None:
+            diversity = sum([sim_matrix[i][j] for i in rec_set for j in rec_set if i != j]) / 2
+            sum_diversity += diversity
 
-    if len(predictedRatings) != 0:
-        return mean_absolute_error(realRatings, predictedRatings)
+        try:
+            precision = true_positives / (true_positives + false_positives)
+        except ZeroDivisionError:
+            precision = 0
 
-    return 0
+        recall = true_positives / (true_positives + false_negatives)
 
+        sum_precision += precision
+        sum_recall += recall
 
-def evaluateRandomMAE(conn, Users, Items, useUserAverageRating=True):
-    queryUserMovies = "SELECT rating FROM movielens_rating WHERE userId = ? AND movielensid = ?"
-    SumRandomMAE = 0
-    userPredictions = []
+    size = len(user_profiles)
+    return utils.evaluateAverage(sum_precision, size), utils.evaluateAverage(sum_recall, size), \
+           utils.evaluateAverage(sum_diversity, size)
 
-    for user in Users:
-
-        if useUserAverageRating:
-            UserAverageRating = Users[1]
-            # UserAverageRating = utils.getUserAverageRating(user[0])
-
-        REAL_RATINGS = []
-
-        for item in Items:
-
-            c = conn.cursor()
-            c.execute(queryUserMovies, (user[0], item[0],))
-            result = c.fetchone()
-            if (type(result) is tuple):
-                REAL_RATINGS.append(result[0])
-
-        if len(REAL_RATINGS) != 0:
-            if useUserAverageRating:
-                try:
-                    userPredictions = [UserAverageRating] * len(REAL_RATINGS)
-                except IndexError:
-                    print "Index Error", UserAverageRating, REAL_RATINGS
-            else:
-                userPredictions = np.random.uniform(0.5, 5, len(REAL_RATINGS))
-
-            try:
-                randomMae = mean_absolute_error(REAL_RATINGS, userPredictions)
-                SumRandomMAE += randomMae
-            except ValueError:
-                print REAL_RATINGS, userPredictions
-
-    return (SumRandomMAE / len(Users))
-
-
-def evaluateRandomPrecisionRecall(conn, Users, Items, PREDICTION_LIST_SIZE, LIMIT_ITEMS_TO_PREDICT):
-    global RATING_THRESHOLD
-
-    SumRecall, SumPrecision = 0, 0
-    queryRelevant = "SELECT movielensId FROM movielens_rating r WHERE r.userId = ? AND r.rating > ? ORDER BY rating DESC LIMIT ?"
-    ItemsIds = [movie[0] for movie in Items]
-
-    strItemsIds = ",".join("?" * len(ItemsIds))
-
-    for user in Users:
-        queryUserMovies = "SELECT movielensid FROM movielens_rating WHERE userId = " + str(
-            user[0]) + " AND movielensid IN (" + strItemsIds + ") LIMIT "+str(PREDICTION_LIST_SIZE)
-
-        c = conn.cursor()
-        userMovies = c.execute(queryUserMovies, ItemsIds).fetchall()
-        predictionsIds = [int(x[0]) for x in userMovies]
-        if len(predictionsIds) != 0:
-
-            # all movies that are relevant for this user
-            c = conn.cursor()
-            c.execute(queryRelevant, (user[0], RATING_THRESHOLD, LIMIT_ITEMS_TO_PREDICT))
-            RelevantMovies = [int(x[0]) for x in c.fetchall()]
-
-            # True Positives: intersection between top recommended and positive evaluated by the user
-            TP = float(len(list(set(RelevantMovies) & set(predictionsIds))))
-            FP = float(abs(PREDICTION_LIST_SIZE - TP))  # False Positives
-            FN = float(abs(len(RelevantMovies) - TP))  # False Negatives
-            # print "User", user[0]
-            # print "Relevant", topRelevant
-            # print "Predictions", predictionsIds
-            # print "TP: ", TP, " FP: ", FP, " FN: ", FN
-            try:
-                Recall = TP / (TP + FN)
-                Precision = TP / (TP + FP)
-                SumRecall += Recall
-                SumPrecision += Precision
-            except ZeroDivisionError:
-                return 0, 0
-                continue
-
-                # print "SUM Recall", SumRecall, "SUM Precision", SumPrecision
-
-    AvgPrecision = SumPrecision / len(Users)
-    AvgRecall = SumRecall / len(Users)
-
-    return AvgRecall, AvgPrecision
-
-
-# def evaluateUserPrecisionRecall(user, userPredictions):
-def evaluateUserPrecisionRecall(conn, user, predictions, PREDICTION_LIST_SIZE):
-
-    global RATING_THRESHOLD
-
-    queryRelevant = "SELECT movielensId, rating FROM movielens_rating r WHERE r.userId = ? AND r.rating > ? ORDER BY rating DESC"
-
-    # predictedPredictions = [int(x[0]) for x in userPredictions]
-
-    c = conn.cursor()
-    c.execute(queryRelevant, (user, RATING_THRESHOLD,))  # all movies that are relevant for this user
-    RelevantMovies = c.fetchall()
-    topPredictions = [int(x[0]) for x in RelevantMovies[:PREDICTION_LIST_SIZE]]
-    print "User ", user
-    print "User Relevant Movies", topPredictions
-    print "User Predictions ", predictions
-    print "Intersection ", list(set(topPredictions) & set(predictions))
-
-    # True Positives: intersection between top recommended and positive evaluated by the user
-    TP = float(len(list(set(topPredictions) & set(predictions))))
-    FP = float(abs(PREDICTION_LIST_SIZE - TP))  # False Positives
-    FN = float(abs(len(RelevantMovies) - TP))  # False Negatives
-
-    # print "Relevant", topPredictions
-    # print "Predictions", predictions
-    print "TP: ", TP, " FP: ", FP, " FN: ", FN
-
-    try:
-        Recall = TP / (TP + FN)
-        Precision = TP / (TP + FP)
-        return Recall, Precision
-    except ZeroDivisionError:
-        return 0, 0

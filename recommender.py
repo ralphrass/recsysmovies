@@ -13,8 +13,8 @@ from multiprocessing import Process, Manager
 _avg_ratings = 3.51611876907599
 _std_deviation = 1.098732183
 
-# user_features = of.load_features('users_tfidf_profile.bin')
-# movie_features = of.load_features('movies_tfidf_profile.bin')
+user_features = load_features('users_tfidf_profile.bin')
+movie_features = load_features('movies_tfidf_profile.bin')
 
 # conn = sqlite3.connect('database.db')
 
@@ -32,15 +32,15 @@ def cosine(movieI, movieJ, feature_vector):
     return cosine_similarity([featuresI], [featuresJ])
 
 
-# def tag_cosine_movie(movieid1, movieid2):
-#
-#     try:
-#         movie1_tfidf = movie_features[movieid1]
-#         movie2_tfidf = movie_features[movieid2]
-#     except KeyError:
-#         return 0
-#
-#     return cosine_similarity([movie1_tfidf], [movie2_tfidf])
+def tag_cosine_movie(movieid1, movieid2):
+
+    try:
+        movie1_tfidf = movie_features[movieid1]
+        movie2_tfidf = movie_features[movieid2]
+    except KeyError:
+        return 0
+
+    return cosine_similarity([movie1_tfidf], [movie2_tfidf])
 
 
 def predict_user_rating(user_baseline, movieid, all_similarities, _ratings_by_movie, _global_average):
@@ -66,7 +66,8 @@ def get_predictions(store_result, strategy, user_baseline, movies, all_movies, s
 
     predictions = [(movie[2], predict_user_rating(user_baseline, movie[2],
                                                   [(movieJ[1], sim_matrix[movieJ[0]][movie[0]])
-                                                   for movieJ in all_movies], _ratings_by_movie, _global_average))
+                                                   for movieJ in all_movies], _ratings_by_movie, _global_average),
+                    movie[0])
                    for movie in movies]
 
     # predictions = [predict_user_rating(user_baseline, movie[2],
@@ -84,22 +85,22 @@ def get_predictions(store_result, strategy, user_baseline, movies, all_movies, s
     # store_result[strategy+'-mae'] = mae
 
 
-# def get_tag_predictions(random_movies, all_movies):
-#
-#     predictions = []
-#
-#     for random_movie in random_movies:
-#         # print "Prediction for ", random_movie
-#         try:
-#             all_similarities = [(movieJ, tag_cosine_movie(movieJ[2], random_movie[2])) for movieJ in all_movies]
-#             prediction = predict_user_rating(all_similarities)
-#             predictions.append((random_movie[2], random_movie[3], prediction))
-#             # print prediction
-#         except KeyError:
-#             continue
-#
-#     # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
-#     return sorted(predictions, key=lambda tup: tup[2], reverse=True)
+def get_tag_predictions(random_movies, all_movies):
+
+    predictions = []
+
+    for random_movie in random_movies:
+        # print "Prediction for ", random_movie
+        try:
+            all_similarities = [(movieJ, tag_cosine_movie(movieJ[2], random_movie[2])) for movieJ in all_movies]
+            prediction = predict_user_rating(all_similarities)
+            predictions.append((random_movie[2], random_movie[3], prediction))
+            # print prediction
+        except KeyError:
+            continue
+
+    # print "Predictions", sorted(predictions, key=lambda tup: tup[2], reverse=True)
+    return sorted(predictions, key=lambda tup: tup[2], reverse=True)
 
 
 def get_random_predictions(movies):
@@ -107,7 +108,7 @@ def get_random_predictions(movies):
     global _avg_ratings, _std_deviation
 
     # predictions = (np.random.uniform(low=0.5, high=5.0, size=len(movies))).tolist()
-    random_movies = [(movie[2], random.uniform(0.5, 5)) for movie in movies]
+    random_movies = [(movie[2], random.uniform(0.5, 5), movie[0]) for movie in movies]
     random_movies = sort_desc(random_movies)
 
     # try:
@@ -127,6 +128,7 @@ def sort_desc(list_to_sort):
 def evaluate(user_profiles, N, feature_vector_name):
 
     sum_recall, sum_precision, sum_false_positive_rate = 0, 0, 0
+    sum_diversity = 0
 
     for user, profile in user_profiles.iteritems():
 
