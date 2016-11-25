@@ -7,7 +7,6 @@ from opening_feat import load_features
 import numpy as np
 import operator
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.metrics import mean_absolute_error
 from multiprocessing import Process, Manager
 
 _avg_ratings = 3.51611876907599
@@ -70,19 +69,7 @@ def get_predictions(store_result, strategy, user_baseline, movies, all_movies, s
                     movie[0])
                    for movie in movies]
 
-    # predictions = [predict_user_rating(user_baseline, movie[2],
-    #                                    [(movieJ[1], sim_matrix[movieJ[0]][movie[0]]) for movieJ in all_movies],
-    #                                    _ratings_by_movie, _global_average) for movie in movies]
-
-    # try:
-        # mae = mean_absolute_error([movie[1] for movie in movies], [movie[1] for movie in predictions])
-        # mae = mean_absolute_error(movies, predictions)
-    # except ValueError:
-    #     mae = 0
-
-    # predictions.sort(reverse=True)
     store_result[strategy] = sort_desc(predictions)
-    # store_result[strategy+'-mae'] = mae
 
 
 def get_tag_predictions(random_movies, all_movies):

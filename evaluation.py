@@ -1,15 +1,20 @@
 import utils
-
+from sklearn.metrics import mean_absolute_error
 
 def evaluate(user_profiles, N, feature_vector_name, sim_matrix):
 
-    sum_recall, sum_precision, sum_false_positive_rate, sum_diversity = 0, 0, 0, 0
+    sum_recall, sum_precision, sum_false_positive_rate, sum_diversity, sum_mae = 0, 0, 0, 0, 0
 
     for user, profile in user_profiles.iteritems():
 
         relevant_set = profile['datasets']['relevant_movies']
         irrelevant_set = profile['datasets']['irrelevant_movies']
         full_prediction_set = profile['predictions'][feature_vector_name]
+        #
+        # print "Relevant Set", relevant_set
+        # print "Predicted Set", full_prediction_set
+        #
+        # exit()
 
         topN = [x[0] for x in full_prediction_set[:N]]  # topN list composed by movies IDs
         rec_set = [x[2] for x in full_prediction_set[:N]]  # topN list composed by trailers IDs
@@ -35,7 +40,16 @@ def evaluate(user_profiles, N, feature_vector_name, sim_matrix):
         sum_precision += precision
         sum_recall += recall
 
+        try:
+            real_ratings = [movie[1] for movie in relevant_set]
+            predicted_ratings = [movie[1] for movie in full_prediction_set if movie[0] in [real_movie[2] for real_movie
+                                                                                           in relevant_set]]
+            mae = mean_absolute_error(real_ratings, predicted_ratings)
+            sum_mae += mae
+        except ValueError:
+            pass
+
     size = len(user_profiles)
-    return utils.evaluateAverage(sum_precision, size), utils.evaluateAverage(sum_recall, size), \
-           utils.evaluateAverage(sum_diversity, size)
+    return utils.evaluateAverage(sum_precision, size), utils.evaluateAverage(sum_recall, size), utils.evaluateAverage(
+        sum_diversity, size), utils.evaluateAverage(sum_mae, size)
 

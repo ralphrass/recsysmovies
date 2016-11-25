@@ -8,14 +8,14 @@ from multiprocessing import Process, Manager
 import random
 import evaluation
 
-iterations = range(1, 16)
+iterations = range(1, 2)
 
 start = time.time()
 
 # load random users and feature vectors
 conn = sqlite3.connect('database.db')
 
-batch = 1
+batch = 0
 print "batch", batch+1
 
 # 85040 is the full set size (4252 is 20 iterations)
@@ -73,21 +73,21 @@ def experiment(N, user_profiles):
     # print "Tag-based Recall", r_t, "Tag-based Precision", p_t, "For iteration with", N
     # LOW LEVEL FEATURES check precision, recall and mae
     # p_l, r_l, m_l, s_l = recommender.run(user_profiles, N, LOW_LEVEL_FEATURES, 'low-level')
-    p, r, d = evaluation.evaluate(user_profiles, N, 'low-level', similarity_matrices[0])
-    print "Low-Level Recall", r, "Low-Level Precision", p, "LL Diversity", d, "For iteration with", N
+    p, r, d, m = evaluation.evaluate(user_profiles, N, 'low-level', similarity_matrices[0])
+    print "Low-Level Recall", r, "Low-Level Precision", p, "LL Diversity", d, "LL MAE", m, "For iteration with", N
 
     # DEEP FEATURES - BOF
     # p_d, r_d, m_d, s_d = recommender.run(user_profiles, N, DEEP_FEATURES_BOF, 'deep')
-    p, r, d = evaluation.evaluate(user_profiles, N, 'deep', similarity_matrices[1])
-    print "Deep BOF Recall", r, "Deep BOF Precision", p, "Deep Diversity", d, "For iteration with", N
+    p, r, d, m = evaluation.evaluate(user_profiles, N, 'deep', similarity_matrices[1])
+    print "Deep BOF Recall", r, "Deep BOF Precision", p, "Deep Diversity", d, "Deep MAE", m, "For iteration with", N
 
     # p_h, r_h, m_h, s_h = recommender.run(user_profiles, N, HYBRID_FEATURES_BOF, 'hybrid')
-    p, r, d = evaluation.evaluate(user_profiles, N, 'hybrid', similarity_matrices[2])
-    print "Hybrid BOF Recall", r, "Hybrid BOF Precision", p, "Hybrid Diversity", d, "For iteration with", N
+    p, r, d, m = evaluation.evaluate(user_profiles, N, 'hybrid', similarity_matrices[2])
+    print "Hybrid BOF Recall", r, "Hybrid BOF Precision", p, "Hybrid Diversity", d, "Hybrid MAE", m, "For iteration with", N
 
     # p, r, m, s = recommender.run(user_profiles, N, None, 'random')
-    p, r, d = evaluation.evaluate(user_profiles, N, 'random', None)
-    print "Random Recall", r, "Random Precision", p, "Random Diversity", d, "For iteration with", N
+    p, r, d, m = evaluation.evaluate(user_profiles, N, 'random', None)
+    print "Random Recall", r, "Random Precision", p, "Random Diversity", d, "Random MAE", m, "For iteration with", N
 
     # if N == 1:
     #     print "LL MAE", m_l
